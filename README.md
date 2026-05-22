@@ -240,39 +240,6 @@ code isn't registered, or is registered but disabled.
 
 ---
 
-## Migrating from the health-portal Laravel implementation
-
-The package mirrors the existing structure closely, so a host project can
-adopt it in a few steps:
-
-1. `composer require aliagela-dev/dpay-php`
-2. Replace `config/payment.php` with the published `config/dpay.php` (same
-   env-var names; just `payment.*` → `dpay.*`).
-3. Delete `app/Services/Payment/Providers/{Edfali,MobiCash,Masrefypay,
-   YousrPay,SaharaPay,Moamalat}/`. The package owns them. Keep
-   `Sadad/` and `Yaser/` until DPay enables them — once they do, drop
-   the local files and re-add via the package per
-   [docs/extending.md](docs/extending.md).
-4. Keep `WalletProvider` and `WalletClient` in your app — the wallet is an
-   internal balance, not a DPay-backed method. Register it with the package's
-   `GatewayManager` at boot:
-   ```php
-   $this->app->extend(GatewayManager::class, function (GatewayManager $m, $app) {
-       return $m->register($app->make(\App\Services\Payment\Providers\Wallet\WalletProvider::class));
-   });
-   ```
-5. Update imports: `App\Services\Payment\Contracts\PaymentProviderInterface`
-   → `DPay\Contracts\PaymentProviderInterface`.
-6. Replace `App\Services\Payment\PaymentGatewayManager` calls with
-   `DPay\GatewayManager` (same method names).
-7. Run your existing test suite.
-
-The Action classes (`InitiateAppointmentPaymentAction`,
-`VerifyWalletChargeAction`, …) stay in the host project — they encode business
-flow (transactions, wallets, appointments) that doesn't belong in a payment SDK.
-
----
-
 ## Testing
 
 ```bash
