@@ -1,0 +1,55 @@
+{
+    "name": "ali/dpay-php",
+    "description": "Framework-agnostic PHP SDK for the DPay payment gateway (Libya) with provider abstractions for Edfali, MobiCash, Sadad, Yaser, SaharaPay, YousrPay, MasrefyPay, and Moamalat. Optional Laravel bridge included.",
+    "type": "library",
+    "license": "proprietary",
+    "keywords": ["dpay", "payment", "libya", "edfali", "mobicash", "sadad", "yaser", "saharapay", "yousrpay", "masrefypay", "moamalat", "sdk"],
+    "require": {
+        "php": "^8.2",
+        "psr/http-client": "^1.0",
+        "psr/http-factory": "^1.0",
+        "psr/http-message": "^1.1 || ^2.0",
+        "psr/log": "^2.0 || ^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5 || ^11.0",
+        "guzzlehttp/guzzle": "^7.8",
+        "nyholm/psr7": "^1.8",
+        "orchestra/testbench": "^8.0 || ^9.0",
+        "illuminate/contracts": "^10.0 || ^11.0"
+    },
+    "suggest": {
+        "guzzlehttp/guzzle": "Default PSR-18 HTTP client and PSR-17 factory. Required if you don't supply your own.",
+        "illuminate/support": "Required only if you use the Laravel bridge (DPay\\Laravel\\DPayServiceProvider)."
+    },
+    "autoload": {
+        "psr-4": {
+            "DPay\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "DPay\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "DPay\\Laravel\\DPayServiceProvider"
+            ],
+            "aliases": {
+                "DPay": "DPay\\Laravel\\Facades\\DPay"
+            }
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:unit": "phpunit --testsuite Unit",
+        "test:feature": "phpunit --testsuite Feature"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

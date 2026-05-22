@@ -1,0 +1,279 @@
+=================================================================
+  DPay sandbox probe
+  base_url: https://dpay.ly/api/sandbox
+  api_key:  sb_tk_x2Splq…(masked)
+  amount:   50 LYD
+  good OTP: 111111   bad OTP: 999999
+  started:  2026-05-22T21:32:43+00:00
+=================================================================
+
+-----------------------------------------------------------------
+PROVIDER: edfali    fields: {"phone_number":"0912345678"}
+-----------------------------------------------------------------
+[1] sendOtp() OK -> reference=600
+[1b] raw openSession response:
+  raw:
+    array (
+      'message' => 'Payment session created successfully',
+      'session_id' => 601,
+      'status' => 'pending',
+      'amount' => 50,
+      'fee' => 0.2,
+      'fee_amount' => 0.1,
+      'total' => 50.1,
+      'pay_method' => 'edfali',
+      'expired_at' => '2026-05-22T21:37:47.000000Z',
+      'data' => NULL,
+      'sandbox' => true,
+    )
+[2] verifyOtp('111111') -> TRUE (paid)
+[2b] raw verifySession response:
+  raw:
+    array (
+      'message' => 'Payment already verified',
+      'payment_id' => 262,
+      'status' => 'paid',
+      'amount' => 50,
+      'pay_method' => 'edfali',
+      'tx_id' => 'sb_txn_08bc1cd03e0bc43ebce12bc2b8ffd887',
+      'sandbox' => true,
+    )
+[3] verifyOtp('999999' BAD) -> FALSE (expected)
+[4] getSession() OK status=paid
+  raw:
+    array (
+      'session_id' => 600,
+      'status' => 'paid',
+      'amount' => 50,
+      'pay_method' => 'edfali',
+      'expired_at' => '2026-05-22T21:37:47.000000Z',
+      'data' => 
+      array (
+        'fee_amount' => 0.1,
+        'fee_percent' => 0.2,
+        'original_amount' => 50,
+      ),
+      'sandbox' => true,
+    )
+
+-----------------------------------------------------------------
+PROVIDER: sadad    fields: {"phone_number":"0912345678"}
+-----------------------------------------------------------------
+[1] sendOtp() FAILED: DPay\Exceptions\DPayException (500): Unsupported payment method: sadad
+
+-----------------------------------------------------------------
+PROVIDER: yaser    fields: {"phone_number":"0912345678"}
+-----------------------------------------------------------------
+[1] sendOtp() FAILED: DPay\Exceptions\DPayException (500): The selected pay method is invalid.
+
+-----------------------------------------------------------------
+PROVIDER: mobicash    fields: {"card_number":"7279627"}
+-----------------------------------------------------------------
+[1] sendOtp() OK -> reference=603
+[1b] raw openSession response:
+  raw:
+    array (
+      'message' => 'Payment session created successfully',
+      'session_id' => 604,
+      'status' => 'pending',
+      'amount' => 50,
+      'fee' => 0.8,
+      'fee_amount' => 0.4,
+      'total' => 50.4,
+      'pay_method' => 'mobicash',
+      'expired_at' => '2026-05-22T21:38:06.000000Z',
+      'data' => NULL,
+      'sandbox' => true,
+    )
+[2] verifyOtp('111111') -> TRUE (paid)
+[2b] raw verifySession response:
+  raw:
+    array (
+      'message' => 'Payment already verified',
+      'payment_id' => 263,
+      'status' => 'paid',
+      'amount' => 50,
+      'pay_method' => 'mobicash',
+      'tx_id' => 'sb_txn_57f74d227b639220dd43d5282df8253f',
+      'sandbox' => true,
+    )
+[3] verifyOtp('999999' BAD) -> FALSE (expected)
+[4] getSession() OK status=paid
+  raw:
+    array (
+      'session_id' => 603,
+      'status' => 'paid',
+      'amount' => 50,
+      'pay_method' => 'mobicash',
+      'expired_at' => '2026-05-22T21:38:05.000000Z',
+      'data' => 
+      array (
+        'fee_amount' => 0.4,
+        'fee_percent' => 0.8,
+        'original_amount' => 50,
+      ),
+      'sandbox' => true,
+    )
+
+-----------------------------------------------------------------
+PROVIDER: masrefypay    fields: {"card_number":"1234567"}
+-----------------------------------------------------------------
+[1] sendOtp() OK -> reference=606
+[1b] raw openSession response:
+  raw:
+    array (
+      'message' => 'Payment session created successfully',
+      'session_id' => 607,
+      'status' => 'pending',
+      'amount' => 50,
+      'fee' => 0,
+      'fee_amount' => 0,
+      'total' => 50,
+      'pay_method' => 'masrefypay',
+      'expired_at' => '2026-05-22T21:38:21.000000Z',
+      'data' => NULL,
+      'sandbox' => true,
+    )
+[2] verifyOtp('111111') -> TRUE (paid)
+[2b] raw verifySession response:
+  raw:
+    array (
+      'message' => 'Payment already verified',
+      'payment_id' => 264,
+      'status' => 'paid',
+      'amount' => 50,
+      'pay_method' => 'masrefypay',
+      'tx_id' => 'sb_txn_eb9b8733802e7bb3f13d7879d87cf1ae',
+      'sandbox' => true,
+    )
+[3] verifyOtp('999999' BAD) -> FALSE (expected)
+[4] getSession() OK status=paid
+  raw:
+    array (
+      'session_id' => 606,
+      'status' => 'paid',
+      'amount' => 50,
+      'pay_method' => 'masrefypay',
+      'expired_at' => '2026-05-22T21:38:20.000000Z',
+      'data' => 
+      array (
+        'fee_amount' => 0,
+        'fee_percent' => 0,
+        'original_amount' => 50,
+      ),
+      'sandbox' => true,
+    )
+
+-----------------------------------------------------------------
+PROVIDER: yousrpay    fields: {"card_number":"1234567"}
+-----------------------------------------------------------------
+[1] sendOtp() FAILED: DPay\Exceptions\DPayRateLimitException (429): Too Many Attempts.
+
+-----------------------------------------------------------------
+PROVIDER: saharapay    fields: {"card_number":"1234567"}
+-----------------------------------------------------------------
+[1] sendOtp() FAILED: DPay\Exceptions\DPayRateLimitException (429): Too Many Attempts.
+
+-----------------------------------------------------------------
+PROVIDER: moamalat    fields: []
+-----------------------------------------------------------------
+[1] sendOtp() FAILED: DPay\Exceptions\DPayRateLimitException (429): Too Many Attempts.
+
+=================================================================
+  Negative paths
+=================================================================
+[5] fractional amount: DPay\Exceptions\DPayValidationException: Amount must be a whole number for this payment provider.
+[6] below min amount: DPay\Exceptions\DPayValidationException: Amount is below the minimum of 5.
+[7] unknown pay_method: DPay\Exceptions\DPayRateLimitException (429): Too Many Attempts.
+[8] bogus session id: DPay\Exceptions\DPaySessionNotFoundException (404): Payment session not found
+[9] bad API key: DPay\Exceptions\DPayAuthException (401): Invalid sandbox API token.
+
+=================================================================
+  Probe finished: 2026-05-22T21:33:52+00:00
+  Full log: /Users/ali/Documents/GitHub/mine/dpay-php/tests/sandbox/probe-output.log
+=================================================================
+
+=================================================================
+  SECOND-PASS PROBE (yousrpay, saharapay, moamalat) at 2026-05-22T21:34:28+00:00
+  using 12s delays to avoid rate limiter
+=================================================================
+
+PROVIDER: yousrpay
+[1] sendOtp() OK -> reference=609
+[1b] raw openSession response:
+  array (
+    'message' => 'Payment session created successfully',
+    'session_id' => 610,
+    'status' => 'pending',
+    'amount' => 50,
+    'fee' => 0,
+    'fee_amount' => 0,
+    'total' => 50,
+    'pay_method' => 'yousrpay',
+    'expired_at' => '2026-05-22T21:39:44.000000Z',
+    'data' => NULL,
+    'sandbox' => true,
+  )
+[2] verifyOtp('111111') -> TRUE
+[2b] raw verifySession response:
+  array (
+    'message' => 'Payment already verified',
+    'payment_id' => 265,
+    'status' => 'paid',
+    'amount' => 50,
+    'pay_method' => 'yousrpay',
+    'tx_id' => 'sb_txn_837daf60c6b00abe562ba8d5731089db',
+    'sandbox' => true,
+  )
+
+PROVIDER: saharapay
+[1] sendOtp() OK -> reference=611
+[1b] raw openSession response:
+  array (
+    'message' => 'Payment session created successfully',
+    'session_id' => 612,
+    'status' => 'pending',
+    'amount' => 50,
+    'fee' => 0,
+    'fee_amount' => 0,
+    'total' => 50,
+    'pay_method' => 'saharapay',
+    'expired_at' => '2026-05-22T21:40:10.000000Z',
+    'data' => NULL,
+    'sandbox' => true,
+  )
+[2] verifyOtp('111111') -> TRUE
+[2b] raw verifySession response:
+  array (
+    'message' => 'Payment already verified',
+    'payment_id' => 266,
+    'status' => 'paid',
+    'amount' => 50,
+    'pay_method' => 'saharapay',
+    'tx_id' => 'sb_txn_2755f53baf5de4cc08942d9c7bfa3ec6',
+    'sandbox' => true,
+  )
+
+PROVIDER: moamalat
+[1] sendOtp() OK -> reference=613
+[1b] raw openSession response:
+  array (
+    'message' => 'Payment session created successfully',
+    'session_id' => 614,
+    'status' => 'pending',
+    'amount' => 50,
+    'fee' => 0.2,
+    'fee_amount' => 0.1,
+    'total' => 50.1,
+    'pay_method' => 'moamalat',
+    'expired_at' => '2026-05-22T21:40:35.000000Z',
+    'data' => NULL,
+    'sandbox' => true,
+    'payment_link' => 'https://dpay.ly/sandbox/moamalat-pay/614',
+  )
+[2] Moamalat status poll -> still pending (expected — user must finish in LightBox)
+
+Retrying unknown pay_method test...
+[7] unknown pay_method: DPay\Exceptions\DPayException (500): The selected pay method is invalid.
+
+Second-pass finished: 2026-05-22T21:36:14+00:00

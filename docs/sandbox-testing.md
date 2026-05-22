@@ -1,0 +1,128 @@
+# Sandbox testing — going from mock to live
+
+**Status: ✅ VALIDATED against the real DPay sandbox** (2026-05-22). Every
+endpoint, field name, status string, auth scheme, and exception path
+exercised by [tests/sandbox/probe.php](../tests/sandbox/probe.php).
+
+See [SANDBOX-VALIDATION.md](../SANDBOX-VALIDATION.md) for the raw probe
+output and a detailed per-provider results table.
+
+---
+
+## Sandbox credentials
+
+| Setting | Value |
+|---|---|
+| Base URL | `https://dpay.ly/api/sandbox` |
+| API token | Issued in your DPay developer portal (keep out of git!) |
+| Universal OTP | `111111` (fixed for all OTP gateways) |
+
+**Test data the sandbox accepts:**
+
+| Provider | Test input |
+|---|---|
+| `edfali`     | phone `0912345678` or `0923456789` |
+| `mobicash`   | card `7279627` (7 digits) |
+| `masrefypay` | card `1234567` (Jumhouria Bank, 7 digits) or `111234567` (cross-bank OnePay, prefix 11 + 7 digits) |
+| `yousrpay`   | card `1234567` (Commercial Bank) or `331234567` (cross-bank OnePay prefix 33) |
+| `saharapay`  | card `1234567` (Sahara Bank) or `661234567` (cross-bank OnePay prefix 66) |
+| `moamalat`   | LightBox cards: `6395043835180860`, `6395043165725698`, `6395043170446256`, `6395043987382215`, `6395043165743733` (expiry `01/27`, OTP `111111`) |
+
+---
+
+## Running the probe yourself
+
+```bash
+# Set creds in the script (top of tests/sandbox/probe.php),
+# or extract them to env vars before sharing the repo.
+php tests/sandbox/probe.php
+```
+
+Output goes to stdout AND `tests/sandbox/probe-output.log`. Re-runnable —
+each call gets a fresh session_id.
+
+> **Rate limiting is aggressive in the sandbox.** ~4 requests in quick
+> succession trips a 429 (`DPayRateLimitException` with message
+> `"Too Many Attempts."`). The probe inserts 2.5–15s delays between
+> calls to stay under the limit. For faster local iteration, exclude
+> providers you don't need.
+
+---
+
+## Setting up Laravel for sandbox
+
+```env
+DPAY_BASE_URL=https://dpay.ly/api/sandbox
+DPAY_API_KEY=sb_tk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+DPAY_TIMEOUT=30
+DPAY_MOCK=false
+DPAY_MIN_AMOUNT=5
+
+PAYMENT_GATEWAY_EDFALI_ENABLED=true
+PAYMENT_GATEWAY_MOBICASH_ENABLED=true
+PAYMENT_GATEWAY_MASREFYPAY_ENABLED=true
+PAYMENT_GATEWAY_YOUSRPAY_ENABLED=true
+PAYMENT_GATEWAY_SAHARAPAY_ENABLED=true
+PAYMENT_GATEWAY_MOAMALAT_ENABLED=true
+```
+
+> Sadad and Yaser providers aren't shipped with the SDK — both return
+> `500 "Unsupported payment method"` from this sandbox. When DPay enables
+> them on your merchant, re-add by following
+> [extending.md § Scenario 2](extending.md#scenario-2--a-new-dpay-pay_method).
+
+---
+
+## What the probe validated
+
+### Endpoint surface
+- `POST /payment/sessions/open` — works, returns `session_id` (int), `status: pending`, `payment_link` (Moamalat only).
+- `POST /payment/sessions/verify` — works, accepts `{session_id, otp}`, returns `status: paid` on success, 422 on wrong OTP (we map to `null`).
+- `GET  /payment/sessions/{id}` — works, returns 404 (→ `DPaySessionNotFoundException`) on bogus id.
+
+### Auth
+- `Authorization: Bearer <key>` ✅ confirmed.
+- Bad key → `DPayAuthException` with message `"Invalid sandbox API token."` (HTTP 401).
+
+### Status mapping
+- DPay returns lowercase `"pending"` / `"paid"` — matches our `SessionStatus` enum exactly.
+
+### Field names
+- Request: `pay_method`, `amount`, `customer_mobile`, `card_number`, `data.description` ✅
+- Response (openSession): `session_id`, `status`, `amount`, `fee`, `fee_amount`, `total`, `pay_method`, `expired_at`, `data`, `payment_link` (Moamalat), `message` ✅
+- Response (verifySession): `message`, `payment_id`, `status`, `amount`, `pay_method`, `tx_id` ✅
+- Response (getSession): `session_id`, `status`, `amount`, `pay_method`, `expired_at`, `data: {fee_amount, fee_percent, original_amount}` ✅
+
+### Differences from our initial assumptions (already patched)
+
+| Assumption | Reality | Fix |
+|---|---|---|
+| `currency` field always present | Sandbox responses **omit `currency`** | DTO defaults to `'LYD'` — works, no breakage |
+| 429 maps to `DPayValidationException` | 429 should be its own class | Added `DPayRateLimitException` |
+| `message` only on verifySession | Also present on openSession | Added `OpenSessionResponse::$message` |
+| `tx_id` format | Sandbox uses `sb_txn_<32-hex>`; prod likely `txn_<...>` | No code change — we don't parse it |
+| Extra `sandbox: true` flag | Present in every response | Captured in `raw`, not a typed field |
+
+---
+
+## Going to production
+
+Checklist when you flip from sandbox to prod:
+
+1. ✅ Confirm prod `DPAY_BASE_URL` (probably `https://dpay.ly/api` without `/sandbox`).
+2. ✅ Set `DPAY_MOCK=false`.
+3. ✅ Rotate to the production API key (different from sandbox token).
+4. ⚠️ Add a production-environment guard:
+   ```php
+   if (app()->environment('production') && config('dpay.mock') !== false) {
+       throw new RuntimeException('DPAY_MOCK must be false in production');
+   }
+   ```
+5. ⚠️ If you need Sadad / Yaser in prod, follow
+   [extending.md § Scenario 2](extending.md#scenario-2--a-new-dpay-pay_method)
+   to add them — they aren't shipped because DPay's sandbox doesn't
+   enable them.
+6. ⚠️ Don't assume the sandbox's "any 6-digit OTP works" applies to prod —
+   prod sends real OTPs to real phones / cards.
+7. ⚠️ Implement back-off on `DPayRateLimitException` if you make bursts
+   of requests (e.g. batch refunds, status reconciliation jobs).
