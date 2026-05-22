@@ -25,16 +25,16 @@ This is a private package — wire it in via a Composer VCS repository:
 ```json
 {
     "repositories": [
-        { "type": "vcs", "url": "git@github.com:you/dpay-php.git" }
+        { "type": "vcs", "url": "git@github.com:AliAgela-dev/dpay-php.git" }
     ],
     "require": {
-        "ali/dpay-php": "dev-main"
+        "aliagela-dev/dpay-php": "^0.1"
     }
 }
 ```
 
 ```bash
-composer require ali/dpay-php
+composer require aliagela-dev/dpay-php
 ```
 
 ---
@@ -245,7 +245,7 @@ code isn't registered, or is registered but disabled.
 The package mirrors the existing structure closely, so a host project can
 adopt it in a few steps:
 
-1. `composer require ali/dpay-php`
+1. `composer require aliagela-dev/dpay-php`
 2. Replace `config/payment.php` with the published `config/dpay.php` (same
    env-var names; just `payment.*` → `dpay.*`).
 3. Delete `app/Services/Payment/Providers/{Edfali,MobiCash,Masrefypay,
