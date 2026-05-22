@@ -1,0 +1,10 @@
+parameters:
+    level: 8
+    paths:
+        - src
+    excludePaths:
+        # Laravel bridge requires container resolution + facade statics
+        # that PHPStan can't analyse without larastan. Validated at
+        # runtime via tests/Feature/LaravelBridgeTest.php + ConfigOverrideTest.
+        - src/Laravel
+    treatPhpDocTypesAsCertain: false

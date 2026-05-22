@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Static analysis (PHPStan level 8)
+        run: composer analyse
+
       - name: Run test suite
         run: composer test
         # tests/sandbox/* is a standalone probe (not PHPUnit), so it's
