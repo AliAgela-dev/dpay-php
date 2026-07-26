@@ -13,7 +13,7 @@ use Throwable;
  * Carries the human-readable message from DPay's JSON response so callers
  * can surface it to end users (e.g. as a ValidationException in Laravel).
  */
-class DPayException extends RuntimeException
+class DPayException extends RuntimeException implements DPayExceptionInterface
 {
     /**
      * @param  array<string, mixed>|null  $errors  Optional field-level errors from DPay's response.
