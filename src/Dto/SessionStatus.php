@@ -20,6 +20,7 @@ enum SessionStatus: string
     case FAILED = 'failed';
     case EXPIRED = 'expired';
     case REFUNDED = 'refunded';
+    case VOIDED = 'voided';
     case UNKNOWN = 'unknown';
 
     public static function fromString(?string $value): self
@@ -30,7 +31,7 @@ enum SessionStatus: string
     public function isTerminal(): bool
     {
         return match ($this) {
-            self::PAID, self::FAILED, self::EXPIRED, self::REFUNDED => true,
+            self::PAID, self::FAILED, self::EXPIRED, self::REFUNDED, self::VOIDED => true,
             default => false,
         };
     }
