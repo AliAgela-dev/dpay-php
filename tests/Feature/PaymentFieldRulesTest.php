@@ -102,4 +102,66 @@ final class PaymentFieldRulesTest extends TestCase
             PaymentFieldRules::for($provider),
         );
     }
+
+    public function test_digits_one_of_becomes_an_alternation_regex(): void
+    {
+        $provider = new \DPay\Providers\SaharaPayProvider(
+            $this->createMock(\DPay\Client\DPayClientInterface::class),
+            'saharapay',
+            true,
+            [\DPay\Dto\PaymentField::bankCardNumber()],
+        );
+
+        $rules = \DPay\Laravel\PaymentFieldRules::for($provider);
+
+        self::assertContains('regex:/^(\d{7}|\d{9})$/', $rules['fields.card_number']);
+    }
+
+    public function test_nine_digit_cross_bank_card_passes_validation(): void
+    {
+        $provider = new \DPay\Providers\SaharaPayProvider(
+            $this->createMock(\DPay\Client\DPayClientInterface::class),
+            'saharapay',
+            true,
+            [\DPay\Dto\PaymentField::bankCardNumber()],
+        );
+
+        $validator = $this->validator()->make(
+            ['fields' => ['card_number' => '661234567']],
+            \DPay\Laravel\PaymentFieldRules::for($provider),
+        );
+
+        self::assertTrue($validator->passes(), 'A 9-digit OnePay card must be accepted.');
+    }
+
+    public function test_eight_digit_card_is_rejected(): void
+    {
+        $provider = new \DPay\Providers\SaharaPayProvider(
+            $this->createMock(\DPay\Client\DPayClientInterface::class),
+            'saharapay',
+            true,
+            [\DPay\Dto\PaymentField::bankCardNumber()],
+        );
+
+        $validator = $this->validator()->make(
+            ['fields' => ['card_number' => '12345678']],
+            \DPay\Laravel\PaymentFieldRules::for($provider),
+        );
+
+        self::assertFalse($validator->passes(), '8 digits is neither same-bank nor cross-bank.');
+    }
+
+    public function test_an_empty_digits_one_of_emits_no_regex_rule(): void
+    {
+        $provider = new \DPay\Providers\SaharaPayProvider(
+            $this->createMock(\DPay\Client\DPayClientInterface::class),
+            'saharapay',
+            true,
+            [new PaymentField(key: 'card_number', digitsOneOf: [])],
+        );
+
+        foreach (\DPay\Laravel\PaymentFieldRules::for($provider)['fields.card_number'] as $rule) {
+            self::assertStringNotContainsString('regex:', $rule);
+        }
+    }
 }

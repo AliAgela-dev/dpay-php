@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace DPay\Dto;
 
+use InvalidArgumentException;
+
 /**
  * Describes a single input the provider's sendOtp() expects in $fields.
  *
@@ -26,14 +28,26 @@ final class PaymentField
         public readonly bool $required = true,
         public readonly ?string $regex = null,
         public readonly ?int $digits = null,
-        /** @var list<int>|null Exact digit counts, any of which is valid (bank cards: 7 or 9). */
+        /**
+         * @var list<int>|null Exact digit counts, any of which is valid
+         *      (bank cards: 7 or 9). An empty array means "no digit
+         *      constraint" — PaymentFieldRules emits no regex rule for it.
+         */
         public readonly ?array $digitsOneOf = null,
         public readonly array $labels = [],
         public readonly array $placeholders = [],
         public readonly string $inputType = 'text',
         /** Wire field name sent to DPay. Defaults to $key. */
         public readonly ?string $sendAs = null,
-    ) {}
+    ) {
+        if ($digits !== null && $digitsOneOf !== null) {
+            throw new InvalidArgumentException(
+                'PaymentField cannot set both digits and digitsOneOf — they would '
+                .'generate mutually unsatisfiable validation rules. Use digitsOneOf '
+                .'for a field accepting several lengths, digits for exactly one.',
+            );
+        }
+    }
 
     /**
      * Libyan mobile-number field. Matches the health-portal default:
@@ -157,6 +171,9 @@ final class PaymentField
             'labels' => $this->labels,
             'placeholders' => $this->placeholders,
             'input_type' => $this->inputType,
+            // Deliberately the RESOLVED name, not the raw nullable $sendAs:
+            // JSON consumers must always get a concrete wire name rather than
+            // having to replicate the null-coalesce. Do not "simplify" this.
             'send_as' => $this->wireName(),
         ];
     }
