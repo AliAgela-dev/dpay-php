@@ -23,4 +23,10 @@ final class SessionStatusTest extends TestCase
     {
         self::assertSame(SessionStatus::UNKNOWN, SessionStatus::fromString('wat'));
     }
+
+    public function test_pending_and_unknown_are_not_terminal(): void
+    {
+        self::assertFalse(SessionStatus::PENDING->isTerminal());
+        self::assertFalse(SessionStatus::UNKNOWN->isTerminal());
+    }
 }
