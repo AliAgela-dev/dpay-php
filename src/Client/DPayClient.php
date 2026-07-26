@@ -32,7 +32,7 @@ use Psr\Log\NullLogger;
  *
  * Behaviors preserved:
  *   - Whole-number amount enforcement (fractional => DPayValidationException)
- *   - Configurable min_amount enforcement (default 5)
+ *   - Configurable min_amount enforcement (default 0.01)
  *   - Bearer-token auth, JSON request/response
  *   - Mock branch returning synthetic responses (random session_id,
  *     4-6 digit OTP accepted)

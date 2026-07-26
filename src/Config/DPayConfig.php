@@ -13,7 +13,7 @@ final class DPayConfig
         public readonly string $apiKey = '',
         public readonly int $timeout = 15,
         public readonly bool $mock = false,
-        public readonly int $minAmount = 5,
+        public readonly float $minAmount = 0.01,
     ) {
         if ($timeout < 1) {
             throw new InvalidArgumentException('timeout must be >= 1 second.');
@@ -34,7 +34,7 @@ final class DPayConfig
             apiKey: (string) ($cfg['api_key'] ?? ''),
             timeout: (int) ($cfg['timeout'] ?? 15),
             mock: (bool) ($cfg['mock'] ?? false),
-            minAmount: (int) ($cfg['min_amount'] ?? 5),
+            minAmount: (float) ($cfg['min_amount'] ?? 0.01),
         );
     }
 }

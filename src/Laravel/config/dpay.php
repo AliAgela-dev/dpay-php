@@ -19,7 +19,7 @@ return [
     'api_key' => env('DPAY_API_KEY', ''),
     'timeout' => (int) env('DPAY_TIMEOUT', 15),
     'mock' => (bool) env('DPAY_MOCK', true),
-    'min_amount' => (int) env('DPAY_MIN_AMOUNT', 5),
+    'min_amount' => (float) env('DPAY_MIN_AMOUNT', 0.01),
 
     /*
     |--------------------------------------------------------------------------

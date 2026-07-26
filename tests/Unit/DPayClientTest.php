@@ -37,7 +37,10 @@ final class DPayClientTest extends TestCase
                 apiKey: 'test-key',
                 timeout: 5,
                 mock: false,
-                minAmount: 5,
+                // Explicit floor (above the DPayConfig default of 0.01) so
+                // test_open_session_rejects_amount_below_minimum still
+                // exercises the below-minimum rejection path.
+                minAmount: 5.0,
             ),
             httpClient: $this->http,
             requestFactory: $this->psr17,
