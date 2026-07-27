@@ -106,4 +106,33 @@ final class ProviderFieldsTest extends TestCase
         self::assertSame('1234567', $body2['card_number']);
         self::assertArrayNotHasKey('customer_mobile', $body2);
     }
+
+    public function test_fields_reach_the_wire_under_their_send_as_name(): void
+    {
+        $client = new class implements \DPay\Client\DPayClientInterface {
+            public ?\DPay\Dto\OpenSessionRequest $seen = null;
+
+            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
+            {
+                $this->seen = $request;
+
+                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
+            }
+
+            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
+            {
+                return null;
+            }
+
+            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
+            {
+                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
+            }
+        };
+
+        $provider = new \DPay\Providers\EdfaliProvider($client, 'edfali');
+        $provider->sendOtp(50, ['phone_number' => '0912345678']);
+
+        self::assertSame('0912345678', $client->seen?->customerMobile);
+    }
 }

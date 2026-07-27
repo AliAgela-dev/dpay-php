@@ -56,6 +56,7 @@ final class PaymentField
     public static function phoneNumber(
         string $key = 'phone_number',
         ?string $regex = '/^09\d{8}$/',
+        ?string $sendAs = 'customer_mobile',
     ): self {
         return new self(
             key: $key,
@@ -65,6 +66,7 @@ final class PaymentField
             labels: ['en' => 'Phone Number', 'ar' => 'رقم الهاتف'],
             placeholders: ['en' => '09xxxxxxxx', 'ar' => '09xxxxxxxx'],
             inputType: 'tel',
+            sendAs: $sendAs,
         );
     }
 
