@@ -285,8 +285,8 @@ gives up.
 
 | What happens | Where it surfaces |
 |---|---|
-| Amount has a decimal (e.g. `49.5`) | `sendOtp` throws `DPayValidationException` immediately. DPay only accepts integers. |
-| Amount below `min_amount` (default 5) | Same — `DPayValidationException` before any HTTP call. |
+| Amount below `min_amount` (default `0.01`) | `sendOtp` throws `DPayValidationException` before any HTTP call. |
+| Amount has many decimal places (e.g. `49.999`) | Sent to DPay as-is — the SDK does not round or reject it. DPay's own validation applies server-side. |
 | User enters wrong OTP | `verifyOtp` returns `false`. The session is still alive — they can retry until it expires. |
 | Session expired | `verifyOtp` returns `false`. The reference is dead; start over with a new `sendOtp`. |
 | DPay returns 401 (bad API key) | `DPayAuthException`. Not user-facing — fix your env. |
