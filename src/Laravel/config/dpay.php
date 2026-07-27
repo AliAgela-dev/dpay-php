@@ -92,5 +92,10 @@ return [
         'enabled' => (bool) env('DPAY_WEBHOOKS_ENABLED', false),
         'route' => env('DPAY_WEBHOOK_ROUTE', '/webhooks/dpay'),
         'secret' => env('DPAY_WEBHOOK_SECRET', ''),
+        // Applied to the webhook route. Empty by default — add e.g.
+        // ['throttle:60,1'] here if you want rate limiting. Not env-driven
+        // since middleware specs don't serialize cleanly to a single env
+        // var; edit the published config file directly.
+        'middleware' => [],
     ],
 ];

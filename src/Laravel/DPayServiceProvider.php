@@ -98,10 +98,18 @@ class DPayServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ((bool) $this->app['config']->get('dpay.webhooks.enabled', false)) {
+            // Resolve eagerly here, not lazily: enabled=true is an explicit host
+            // opt-in, so a missing secret should fail loudly at boot — a normal
+            // deploy-time error — rather than as an uncaught 500 on the first
+            // real webhook delivery. Hosts who leave webhooks disabled never
+            // reach this branch at all, so the original lazy-binding protection
+            // (see DPayWebhookRouteDisabledTest) is untouched.
+            $this->app->make(WebhookVerifier::class);
+
             $this->app['router']->post(
                 (string) $this->app['config']->get('dpay.webhooks.route', '/webhooks/dpay'),
                 [DPayWebhookController::class, 'handle'],
-            );
+            )->middleware((array) $this->app['config']->get('dpay.webhooks.middleware', []));
         }
 
         if ($this->app->runningInConsole()) {
