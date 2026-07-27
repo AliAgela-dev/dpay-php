@@ -162,6 +162,7 @@ public function initiate(Request $request)
 |---|---|
 | `edfali` | `phone_number` |
 | `mobicash`, `saharapay`, `yousrpay`, `masrefypay` | `card_number` |
+| `sadad` | `phone_number`, `birth_year`, `category` (optional) |
 | `moamalat` | _(none — the user pays via redirect/Lightbox)_ |
 
 ---

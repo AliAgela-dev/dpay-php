@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+- `DPay\Providers\SadadProvider` — REST mobile wallet (Almadar Aljadid),
+  needs `customer_mobile` + `birth_year` + optional `category`. Ships
+  disabled by default; the gateway is merchant-gated on DPay's side.
+
+### Changed
+- `AbstractDPayProvider::sendOtp()` maps every declared field by its wire
+  name (`PaymentField::wireName()`), not a hardcoded `phone_number`/
+  `card_number` check — this is what makes SadadProvider possible with no
+  base-class changes.
+- `min_amount` now a float defaulting to `0.01` (was `int`, default `5`).
+- `OpenSessionRequest` no longer truncates fractional amounts; `description`
+  moves to a top-level request field instead of `data.description`.
+- Bank-card gateways (MasrefyPay/YousrPay/SaharaPay) accept 7-digit
+  same-bank **or** 9-digit cross-bank (OnePay) cards. MobiCash stays 7-only.
+- `openSession()` takes an `OpenSessionRequest` DTO and an optional
+  `Idempotency-Key` instead of positional scalar arguments. **Breaking.**
+
+### Fixed
+- `SessionStatus` gains `VOIDED`.
+- `UnknownProviderException` now also implements `DPayExceptionInterface`,
+  so a single `catch` can cover both SDK exception trees.
 
 ## [0.1.0] — 2026-05-22
 

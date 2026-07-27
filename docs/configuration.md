@@ -28,6 +28,7 @@ Set them in your `.env`.
 | `PAYMENT_GATEWAY_MASREFYPAY_ENABLED` | `true` | |
 | `PAYMENT_GATEWAY_YOUSRPAY_ENABLED` | `true` | |
 | `PAYMENT_GATEWAY_SAHARAPAY_ENABLED` | `true` | |
+| `PAYMENT_GATEWAY_SADAD_ENABLED` | `false` | Merchant-gated — confirm with DPay before enabling. |
 | `PAYMENT_GATEWAY_MOAMALAT_ENABLED` | `false` | Disabled by default — needs explicit opt-in because the flow is different (redirect, not OTP). |
 
 ### Per-gateway `pay_method` override
@@ -42,6 +43,7 @@ DPay's API uses string identifiers for each gateway (`edfali`, `mobicash`,
 | `DPAY_PAY_METHOD_MASREFYPAY` | `masrefypay` |
 | `DPAY_PAY_METHOD_YOUSRPAY` | `yousrpay` |
 | `DPAY_PAY_METHOD_SAHARAPAY` | `saharapay` |
+| `DPAY_PAY_METHOD_SADAD` | `sadad` |
 | `DPAY_PAY_METHOD_MOAMALAT` | `moamalat` |
 
 ---
