@@ -54,4 +54,11 @@ final class TestEventTest extends TestCase
 
         self::assertSame($body, TestEvent::fromArray($body)->toArray());
     }
+
+    public function test_a_non_scalar_field_value_degrades_instead_of_warning_or_crashing(): void
+    {
+        $event = TestEvent::fromArray(['message' => ['nested' => 'x'], 'merchant_id' => 1]);
+
+        self::assertSame('', $event->message);
+    }
 }

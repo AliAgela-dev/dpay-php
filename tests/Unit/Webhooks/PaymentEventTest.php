@@ -213,4 +213,21 @@ final class PaymentEventTest extends TestCase
 
         self::assertSame([], $event->data);
     }
+
+    public function test_a_non_scalar_field_value_degrades_instead_of_warning_or_crashing(): void
+    {
+        // json_decode can hand back anything for a documented-as-string
+        // field. This must never trigger a PHP warning (this suite's
+        // phpunit.xml sets failOnWarning="true") or throw.
+        $event = PaymentEvent::fromArray([
+            'event' => ['nested' => 'x'],
+            'session_id' => 1,
+            'status' => ['also' => 'nested'],
+            'pay_method' => ['x'],
+        ]);
+
+        self::assertSame(\DPay\Webhooks\WebhookEventType::UNKNOWN, $event->eventType());
+        self::assertSame(\DPay\Dto\SessionStatus::UNKNOWN, $event->status);
+        self::assertSame('', $event->payMethod);
+    }
 }

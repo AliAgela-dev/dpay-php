@@ -59,4 +59,12 @@ final class WebhookEventFactoryTest extends TestCase
         self::assertInstanceOf(PaymentEvent::class, $event);
         self::assertSame(WebhookEventType::UNKNOWN, $event->eventType());
     }
+
+    public function test_a_non_scalar_event_field_still_routes_to_payment_event_with_unknown_type(): void
+    {
+        $event = WebhookEventFactory::fromArray(['event' => ['nested' => 'x'], 'session_id' => 1]);
+
+        self::assertInstanceOf(PaymentEvent::class, $event);
+        self::assertSame(WebhookEventType::UNKNOWN, $event->eventType());
+    }
 }

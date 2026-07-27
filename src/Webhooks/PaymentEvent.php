@@ -45,22 +45,40 @@ final class PaymentEvent implements WebhookEventInterface
     public static function fromArray(array $body): self
     {
         return new self(
-            event: WebhookEventType::fromString(isset($body['event']) ? (string) $body['event'] : null),
+            event: WebhookEventType::fromString(self::toNullableString($body['event'] ?? null)),
             live: (bool) ($body['live'] ?? true),
             sessionId: (int) ($body['session_id'] ?? 0),
-            status: SessionStatus::fromString(isset($body['status']) ? (string) $body['status'] : null),
+            status: SessionStatus::fromString(self::toNullableString($body['status'] ?? null)),
             amount: (float) ($body['amount'] ?? 0),
-            payMethod: (string) ($body['pay_method'] ?? ''),
-            txId: (string) ($body['tx_id'] ?? ''),
-            systemReference: isset($body['system_reference']) ? (string) $body['system_reference'] : null,
-            networkReference: isset($body['network_reference']) ? (string) $body['network_reference'] : null,
-            paidThrough: isset($body['paid_through']) ? (string) $body['paid_through'] : null,
-            payerAccount: isset($body['payer_account']) ? (string) $body['payer_account'] : null,
+            payMethod: self::toStringOrDefault($body['pay_method'] ?? ''),
+            txId: self::toStringOrDefault($body['tx_id'] ?? ''),
+            systemReference: self::toNullableString($body['system_reference'] ?? null),
+            networkReference: self::toNullableString($body['network_reference'] ?? null),
+            paidThrough: self::toNullableString($body['paid_through'] ?? null),
+            payerAccount: self::toNullableString($body['payer_account'] ?? null),
             data: is_array($body['data'] ?? null) ? $body['data'] : [],
-            createdAt: (string) ($body['created_at'] ?? ''),
-            paidAt: (string) ($body['paid_at'] ?? ''),
+            createdAt: self::toStringOrDefault($body['created_at'] ?? ''),
+            paidAt: self::toStringOrDefault($body['paid_at'] ?? ''),
             raw: $body,
         );
+    }
+
+    /**
+     * Coerce a JSON-decoded value to a string, never triggering PHP's
+     * "Array to string conversion" warning. json_decode() can hand back
+     * anything for a field DPay documents as a string — an attacker
+     * controls the webhook body, and a warning here becomes an uncaught
+     * ErrorException under Laravel's default exception handling. Treat
+     * anything non-scalar as absent rather than crashing the receiver.
+     */
+    private static function toStringOrDefault(mixed $value, string $default = ''): string
+    {
+        return is_scalar($value) ? (string) $value : $default;
+    }
+
+    private static function toNullableString(mixed $value): ?string
+    {
+        return is_scalar($value) ? (string) $value : null;
     }
 
     public function eventType(): WebhookEventType

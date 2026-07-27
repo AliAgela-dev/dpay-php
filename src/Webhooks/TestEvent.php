@@ -32,13 +32,26 @@ final class TestEvent implements WebhookEventInterface
     {
         return new self(
             merchantId: (int) ($body['merchant_id'] ?? 0),
-            merchantEmail: (string) ($body['merchant_email'] ?? ''),
+            merchantEmail: self::toStringOrDefault($body['merchant_email'] ?? ''),
             webhookId: (int) ($body['webhook_id'] ?? 0),
-            webhookLabel: (string) ($body['webhook_label'] ?? ''),
-            timestamp: (string) ($body['timestamp'] ?? ''),
-            message: (string) ($body['message'] ?? ''),
+            webhookLabel: self::toStringOrDefault($body['webhook_label'] ?? ''),
+            timestamp: self::toStringOrDefault($body['timestamp'] ?? ''),
+            message: self::toStringOrDefault($body['message'] ?? ''),
             raw: $body,
         );
+    }
+
+    /**
+     * Coerce a JSON-decoded value to a string, never triggering PHP's
+     * "Array to string conversion" warning. json_decode() can hand back
+     * anything for a field DPay documents as a string — an attacker
+     * controls the webhook body, and a warning here becomes an uncaught
+     * ErrorException under Laravel's default exception handling. Treat
+     * anything non-scalar as absent rather than crashing the receiver.
+     */
+    private static function toStringOrDefault(mixed $value, string $default = ''): string
+    {
+        return is_scalar($value) ? (string) $value : $default;
     }
 
     public function eventType(): WebhookEventType
