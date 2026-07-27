@@ -11,6 +11,7 @@ use DPay\Webhooks\WebhookVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 /**
  * Receives DPay webhook deliveries at the route DPayServiceProvider
@@ -26,7 +27,7 @@ final class DPayWebhookController
 {
     public function __construct(
         private readonly WebhookVerifier $verifier,
-        private readonly LoggerInterface $logger,
+        private readonly LoggerInterface $logger = new NullLogger(),
     ) {}
 
     public function handle(Request $request): JsonResponse
