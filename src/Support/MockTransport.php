@@ -16,9 +16,12 @@ use DateTimeZone;
 /**
  * In-memory mock of DPay's three endpoints.
  *
- * Behavior is intentionally identical to the health-portal mock branch:
- *   - openSession returns a random session_id 1-99999 with a 2.5% fee
- *   - verifySession accepts any 4-6 digit numeric OTP, returns 'paid'
+ * Behavior mirrors the DPay sandbox's documented simulated-OTP outcomes:
+ *   - openSession returns a random session_id 1-99999 with a 2.5% fee, and an
+ *     expiry of 10 minutes for moamalat/sadad, 15 minutes otherwise
+ *   - verifySession: OTP '111111' returns 'paid', '000000' simulates a
+ *     decline (returns null), any other 4-6 digit code also returns null
+ *     (this mock has no separate "pending" outcome)
  *   - getSession returns 'paid' for any id
  *
  * Used both by DPayClient when DPayConfig::$mock is true, and as a unit-test
@@ -40,7 +43,7 @@ class MockTransport
             'fee_amount' => $feeAmount,
             'total' => $request->amount + $feeAmount,
             'pay_method' => $request->payMethod,
-            'expired_at' => $this->thirtyMinutesFromNow(),
+            'expired_at' => $this->expiryFor($request->payMethod),
             'data' => null,
         ];
 
@@ -49,7 +52,8 @@ class MockTransport
 
     public function verifySession(int $sessionId, string $otp): ?VerifySessionResponse
     {
-        if (! preg_match('/^\d{4,6}$/', $otp)) {
+        // Mirrors the sandbox: 000000 is a simulated decline.
+        if ($otp === '000000' || ! preg_match('/^\d{4,6}$/', $otp)) {
             return null;
         }
 
@@ -72,15 +76,21 @@ class MockTransport
             'amount' => 0,
             'currency' => 'LYD',
             'pay_method' => 'mock',
-            'expired_at' => $this->thirtyMinutesFromNow(),
+            'expired_at' => $this->expiryFor('mock'),
             'data' => null,
         ]);
     }
 
-    private function thirtyMinutesFromNow(): string
+    /**
+     * Session lifetimes documented at https://dpay.ly/docs/api:
+     * 10 minutes for Moamalat and Sadad, 15 for everything else.
+     */
+    private function expiryFor(string $payMethod): string
     {
+        $minutes = in_array($payMethod, ['moamalat', 'sadad'], true) ? 10 : 15;
+
         return (new DateTimeImmutable('now', new DateTimeZone('UTC')))
-            ->add(new DateInterval('PT30M'))
+            ->add(new DateInterval('PT'.$minutes.'M'))
             ->format(DateTimeImmutable::ATOM);
     }
 
