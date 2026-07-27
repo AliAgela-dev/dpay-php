@@ -16,16 +16,20 @@ use DateTimeZone;
 /**
  * In-memory mock of DPay's three endpoints.
  *
- * Behavior mirrors the DPay sandbox's documented simulated-OTP outcomes:
- *   - openSession returns a random session_id 1-99999 with a 2.5% fee, and an
- *     expiry of 10 minutes for moamalat/sadad, 15 minutes otherwise
- *   - verifySession: OTP '111111' returns 'paid', '000000' simulates a
- *     decline (returns null), any other 4-6 digit code also returns null
- *     (this mock has no separate "pending" outcome)
- *   - getSession returns 'paid' for any id
+ * Behavior mirrors the sandbox at https://dpay.ly/docs/api:
+ *   - openSession returns a random session_id 1-99999 with a 2.5% fee.
+ *     Session lifetime is 10 minutes for moamalat/sadad, 15 minutes
+ *     otherwise — see expiryFor().
+ *   - verifySession accepts any 4-6 digit numeric OTP as a success EXCEPT
+ *     '000000', which simulates a decline. '111111' is the sandbox's
+ *     documented fixed test OTP but is not special-cased here — it is
+ *     just one example of a code that succeeds, like any other.
+ *   - getSession returns 'paid' for any id, with the default 15-minute
+ *     expiry (it has no payMethod to branch on).
  *
- * Used both by DPayClient when DPayConfig::$mock is true, and as a unit-test
- * fixture so consumers can build deterministic suites without a sandbox.
+ * Used both by DPayClient when DPayConfig::$mock is true, and as a
+ * unit-test fixture so consumers can build deterministic suites without
+ * a sandbox.
  */
 class MockTransport
 {
@@ -76,16 +80,20 @@ class MockTransport
             'amount' => 0,
             'currency' => 'LYD',
             'pay_method' => 'mock',
-            'expired_at' => $this->expiryFor('mock'),
+            'expired_at' => $this->expiryFor(null),
             'data' => null,
         ]);
     }
 
     /**
      * Session lifetimes documented at https://dpay.ly/docs/api:
-     * 10 minutes for Moamalat and Sadad, 15 for everything else.
+     * 10 minutes for Moamalat and Sadad, 15 minutes otherwise.
+     *
+     * @param  string|null  $payMethod  Null selects the 15-minute default —
+     *                                  used by getSession(), which has no
+     *                                  gateway to branch on.
      */
-    private function expiryFor(string $payMethod): string
+    private function expiryFor(?string $payMethod): string
     {
         $minutes = in_array($payMethod, ['moamalat', 'sadad'], true) ? 10 : 15;
 

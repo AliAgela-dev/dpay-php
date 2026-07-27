@@ -33,7 +33,7 @@ final class MockTransportTest extends TestCase
 
         $minutes = (strtotime($response->expiredAt) - time()) / 60;
 
-        self::assertEqualsWithDelta(10, $minutes, 1.0);
+        self::assertEqualsWithDelta(10, $minutes, 0.05);
     }
 
     public function test_other_gateways_expire_in_fifteen_minutes(): void
@@ -44,7 +44,7 @@ final class MockTransportTest extends TestCase
 
         $minutes = (strtotime($response->expiredAt) - time()) / 60;
 
-        self::assertEqualsWithDelta(15, $minutes, 1.0);
+        self::assertEqualsWithDelta(15, $minutes, 0.05);
     }
 
     public function test_decimal_amount_is_preserved(): void
