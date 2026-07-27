@@ -71,4 +71,107 @@ final class SadadProviderTest extends TestCase
         // AbstractDPayProvider default of false, same as Edfali.
         self::assertFalse($provider->supportsStatusCheck());
     }
+
+    public function test_send_otp_produces_the_spec_golden_body(): void
+    {
+        $client = new class implements \DPay\Client\DPayClientInterface {
+            public ?\DPay\Dto\OpenSessionRequest $seen = null;
+
+            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
+            {
+                $this->seen = $request;
+
+                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
+            }
+
+            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
+            {
+                return null;
+            }
+
+            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
+            {
+                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
+            }
+        };
+
+        $provider = new SadadProvider($client, 'sadad');
+
+        $provider->sendOtp(100, [
+            'phone_number' => '0912345678',
+            'birth_year' => '1994',
+            'category' => 20,
+        ]);
+
+        // Golden body from the official Postman collection — proves the
+        // schema-driven mapping, not just that the fields exist.
+        self::assertSame(
+            '{"pay_method":"sadad","amount":100,"customer_mobile":"0912345678","birth_year":"1994","category":20}',
+            json_encode($client->seen?->toBody()),
+        );
+    }
+
+    public function test_category_zero_reaches_the_wire(): void
+    {
+        // Category 0 is a valid Sadad category (e-commerce default) and must
+        // not be dropped by a truthiness check anywhere in the pipeline.
+        $client = new class implements \DPay\Client\DPayClientInterface {
+            public ?\DPay\Dto\OpenSessionRequest $seen = null;
+
+            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
+            {
+                $this->seen = $request;
+
+                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
+            }
+
+            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
+            {
+                return null;
+            }
+
+            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
+            {
+                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
+            }
+        };
+
+        $provider = new SadadProvider($client, 'sadad');
+        $provider->sendOtp(100, ['phone_number' => '0912345678', 'birth_year' => '1994', 'category' => 0]);
+
+        self::assertArrayHasKey('category', $client->seen?->toBody());
+        self::assertSame(0, $client->seen?->toBody()['category']);
+    }
+
+    public function test_omitting_category_uses_the_merchant_default(): void
+    {
+        // Category is optional — omitting it must not send category:null or
+        // category:"" to DPay; the key must be absent so the merchant's
+        // configured default applies server-side.
+        $client = new class implements \DPay\Client\DPayClientInterface {
+            public ?\DPay\Dto\OpenSessionRequest $seen = null;
+
+            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
+            {
+                $this->seen = $request;
+
+                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
+            }
+
+            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
+            {
+                return null;
+            }
+
+            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
+            {
+                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
+            }
+        };
+
+        $provider = new SadadProvider($client, 'sadad');
+        $provider->sendOtp(100, ['phone_number' => '0912345678', 'birth_year' => '1994']);
+
+        self::assertArrayNotHasKey('category', $client->seen?->toBody());
+    }
 }
