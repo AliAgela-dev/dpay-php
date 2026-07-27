@@ -70,9 +70,9 @@ interface PaymentProviderInterface
      * Webhooks are configured account-wide at Dashboard -> Webhooks, not
      * per-gateway, so this is true for every provider. It signals that
      * payment.paid/failed/expired/refunded/voided events are available for
-     * this gateway's sessions. Signature verification and typed event parsing live in DPay\Webhooks\*
-     * (WebhookVerifier, WebhookEventFactory); the Laravel bridge adds an
-     * opt-in receiver route — see docs/webhooks.md.
+     * this gateway's sessions. Signature verification and typed event
+     * parsing live in DPay\Webhooks\* (WebhookVerifier, WebhookEventFactory);
+     * the Laravel bridge adds an opt-in receiver route — see docs/webhooks.md.
      */
     public function supportsWebhook(): bool;
 
