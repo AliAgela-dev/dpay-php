@@ -279,6 +279,11 @@ match ($session->status) {
 Wrap that in a queued job that re-runs every 30s for up to 15 minutes, then
 gives up.
 
+> **Prefer webhooks over polling where you can.** The polling approach
+> above still works, but `payment.paid`/`payment.expired`/etc. webhooks
+> now exist and update the same instant DPay knows the answer, without a
+> queued job hammering `getSession()`. See [docs/webhooks.md](webhooks.md).
+
 ---
 
 ## Edge cases

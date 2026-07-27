@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DPay\Providers\SadadProvider` — REST mobile wallet (Almadar Aljadid),
   needs `customer_mobile` + `birth_year` + optional `category`. Ships
   disabled by default; the gateway is merchant-gated on DPay's side.
+- `DPay\Webhooks\WebhookVerifier` — HMAC-SHA256 signature verification with
+  a 5-minute replay window.
+- `DPay\Webhooks\WebhookEventFactory` — typed parsing for all 6 webhook
+  events (`PaymentEvent` for the 5 payment.* events, `TestEvent` for
+  webhook.test's distinct shape).
+- Laravel bridge: opt-in webhook receiver route (`dpay.webhooks.enabled`,
+  off by default) and `DPayWebhookReceived` event.
 
 ### Changed
 - `AbstractDPayProvider::sendOtp()` maps every declared field by its wire

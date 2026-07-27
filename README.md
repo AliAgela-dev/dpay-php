@@ -118,6 +118,7 @@ $status  = DPay::getSession($session->sessionId);
 | Doc | Read it when |
 |---|---|
 | [docs/checkout-flow.md](docs/checkout-flow.md) | You're wiring up checkout — controllers, persistence, polling Moamalat, edge cases. |
+| [docs/webhooks.md](docs/webhooks.md) | You'd rather DPay push payment status to you than poll for it — signature verification, the 6 events, opt-in Laravel setup. |
 | [docs/providers.md](docs/providers.md) | You need exact field schemas, request/response shapes, and per-provider gotchas. |
 | [docs/extending.md](docs/extending.md) | You want to plug in your own Wallet/store-credit provider, or add a new DPay `pay_method`. |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Something broke — what does this exception mean, what to check. |
@@ -176,7 +177,7 @@ Sample shape:
     "requires_otp": true,
     "supports_status_check": false,
     "supports_refund": false,
-    "supports_webhook": false,
+    "supports_webhook": true,
     "required_fields": [
       {
         "key": "phone_number",
