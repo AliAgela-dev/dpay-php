@@ -12,7 +12,9 @@ use DPay\Contracts\PaymentProviderInterface;
 use DPay\Dto\PaymentField;
 use DPay\GatewayManager;
 use DPay\Laravel\Facades\DPayFacadeAccessor;
+use DPay\Laravel\Http\Controllers\DPayWebhookController;
 use DPay\Providers\MoamalatProvider;
+use DPay\Webhooks\WebhookVerifier;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -85,10 +87,23 @@ class DPayServiceProvider extends ServiceProvider
         });
 
         DPayFacadeAccessor::bind($this->app);
+
+        $this->app->singleton(WebhookVerifier::class, function (Container $app): WebhookVerifier {
+            $secret = (string) $app['config']->get('dpay.webhooks.secret', '');
+
+            return new WebhookVerifier($secret);
+        });
     }
 
     public function boot(): void
     {
+        if ((bool) $this->app['config']->get('dpay.webhooks.enabled', false)) {
+            $this->app['router']->post(
+                (string) $this->app['config']->get('dpay.webhooks.route', '/webhooks/dpay'),
+                [DPayWebhookController::class, 'handle'],
+            );
+        }
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 $this->configPath() => $this->configPublishPath(),

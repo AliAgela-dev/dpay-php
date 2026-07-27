@@ -76,4 +76,21 @@ return [
             'pay_method' => env('DPAY_PAY_METHOD_MOAMALAT', 'moamalat'),
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Webhooks
+    |--------------------------------------------------------------------------
+    |
+    | Off by default — a payment SDK should not silently claim a public POST
+    | route on install. Set DPAY_WEBHOOKS_ENABLED=true only after creating a
+    | signing secret at Dashboard -> Webhooks and pointing DPay at this
+    | route. See docs/webhooks.md.
+    |
+    */
+    'webhooks' => [
+        'enabled' => (bool) env('DPAY_WEBHOOKS_ENABLED', false),
+        'route' => env('DPAY_WEBHOOK_ROUTE', '/webhooks/dpay'),
+        'secret' => env('DPAY_WEBHOOK_SECRET', ''),
+    ],
 ];
