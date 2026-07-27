@@ -135,4 +135,43 @@ final class ProviderFieldsTest extends TestCase
 
         self::assertSame('0912345678', $client->seen?->customerMobile);
     }
+
+    public function test_a_field_with_a_mismatched_key_and_send_as_still_reaches_the_right_wire_name(): void
+    {
+        // Deliberately proves routing is driven by wireName(), not by a
+        // hardcoded key check. Under the old hardcoded implementation this
+        // field would never reach customerMobile, because its key isn't
+        // literally 'phone_number' — only sendAs says where it belongs.
+        $client = new class implements \DPay\Client\DPayClientInterface {
+            public ?\DPay\Dto\OpenSessionRequest $seen = null;
+
+            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
+            {
+                $this->seen = $request;
+
+                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
+            }
+
+            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
+            {
+                return null;
+            }
+
+            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
+            {
+                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
+            }
+        };
+
+        $provider = new \DPay\Providers\EdfaliProvider(
+            $client,
+            'edfali',
+            true,
+            [new \DPay\Dto\PaymentField(key: 'mobile', sendAs: 'customer_mobile')],
+        );
+
+        $provider->sendOtp(50, ['mobile' => '0912345678']);
+
+        self::assertSame('0912345678', $client->seen?->customerMobile);
+    }
 }
