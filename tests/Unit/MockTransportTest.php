@@ -47,6 +47,17 @@ final class MockTransportTest extends TestCase
         self::assertEqualsWithDelta(15, $minutes, 0.05);
     }
 
+    public function test_sadad_expires_in_ten_minutes(): void
+    {
+        $response = (new MockTransport())->openSession(
+            new OpenSessionRequest(payMethod: 'sadad', amount: 50),
+        );
+
+        $minutes = (strtotime($response->expiredAt) - time()) / 60;
+
+        self::assertEqualsWithDelta(10, $minutes, 0.05);
+    }
+
     public function test_decimal_amount_is_preserved(): void
     {
         $response = (new MockTransport())->openSession(
