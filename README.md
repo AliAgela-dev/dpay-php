@@ -248,7 +248,7 @@ composer install
 vendor/bin/phpunit
 ```
 
-33 tests, 99 assertions. Unit tests use a fake PSR-18 client; the Laravel
+191 tests, 396 assertions. Unit tests use a fake PSR-18 client; the Laravel
 feature test uses Orchestra Testbench.
 
 ---

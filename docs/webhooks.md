@@ -93,6 +93,11 @@ won't reintroduce the problem above):
 ],
 ```
 
+Size this to your actual delivery volume, not a guess. DPay treats a 429
+the same as any other non-2xx — it counts toward the 5-attempt redelivery
+budget below, so a limit set too low doesn't reject excess traffic, it
+just makes DPay retry it, on the same limited budget.
+
 Not env-driven — middleware specs don't serialize cleanly to a single env
 var, so edit the published config file directly.
 
@@ -157,3 +162,8 @@ already seen as a no-op, not a duplicate charge confirmation.
   payloads but isn't in the documented `pay_method` list for
   `POST /payment/sessions/open`. `PaymentEvent::$payMethod` handles it
   fine either way; there's just no `MpgsProvider`.
+- **Doesn't check the sender's IP address.** Only the signature and
+  timestamp are verified. DPay doesn't publish a fixed source-IP range to
+  allowlist against, so don't rely on network-level IP restrictions as a
+  substitute for signature verification — the signature is the actual
+  trust boundary here.
