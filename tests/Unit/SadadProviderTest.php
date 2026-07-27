@@ -9,6 +9,30 @@ use PHPUnit\Framework\TestCase;
 
 final class SadadProviderTest extends TestCase
 {
+    private function clientDouble(): \DPay\Client\DPayClientInterface
+    {
+        return new class implements \DPay\Client\DPayClientInterface {
+            public ?\DPay\Dto\OpenSessionRequest $seen = null;
+
+            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
+            {
+                $this->seen = $request;
+
+                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
+            }
+
+            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
+            {
+                return null;
+            }
+
+            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
+            {
+                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
+            }
+        };
+    }
+
     public function test_identity(): void
     {
         $provider = new SadadProvider(
@@ -72,28 +96,11 @@ final class SadadProviderTest extends TestCase
         self::assertFalse($provider->supportsStatusCheck());
     }
 
+    // --- Wire-mapping behavior (does the schema actually produce the right body?) ---
+
     public function test_send_otp_produces_the_spec_golden_body(): void
     {
-        $client = new class implements \DPay\Client\DPayClientInterface {
-            public ?\DPay\Dto\OpenSessionRequest $seen = null;
-
-            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
-            {
-                $this->seen = $request;
-
-                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
-            }
-
-            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
-            {
-                return null;
-            }
-
-            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
-            {
-                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
-            }
-        };
+        $client = $this->clientDouble();
 
         $provider = new SadadProvider($client, 'sadad');
 
@@ -115,26 +122,7 @@ final class SadadProviderTest extends TestCase
     {
         // Category 0 is a valid Sadad category (e-commerce default) and must
         // not be dropped by a truthiness check anywhere in the pipeline.
-        $client = new class implements \DPay\Client\DPayClientInterface {
-            public ?\DPay\Dto\OpenSessionRequest $seen = null;
-
-            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
-            {
-                $this->seen = $request;
-
-                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
-            }
-
-            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
-            {
-                return null;
-            }
-
-            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
-            {
-                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
-            }
-        };
+        $client = $this->clientDouble();
 
         $provider = new SadadProvider($client, 'sadad');
         $provider->sendOtp(100, ['phone_number' => '0912345678', 'birth_year' => '1994', 'category' => 0]);
@@ -148,26 +136,7 @@ final class SadadProviderTest extends TestCase
         // Category is optional — omitting it must not send category:null or
         // category:"" to DPay; the key must be absent so the merchant's
         // configured default applies server-side.
-        $client = new class implements \DPay\Client\DPayClientInterface {
-            public ?\DPay\Dto\OpenSessionRequest $seen = null;
-
-            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
-            {
-                $this->seen = $request;
-
-                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
-            }
-
-            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
-            {
-                return null;
-            }
-
-            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
-            {
-                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
-            }
-        };
+        $client = $this->clientDouble();
 
         $provider = new SadadProvider($client, 'sadad');
         $provider->sendOtp(100, ['phone_number' => '0912345678', 'birth_year' => '1994']);
