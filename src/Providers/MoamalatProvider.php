@@ -66,9 +66,14 @@ final class MoamalatProvider implements PaymentProviderInterface
         return false;
     }
 
+    /**
+     * Moamalat transactions can be refunded and voided, but DPay exposes no
+     * REST endpoint to initiate either — they are triggered from the dashboard
+     * and observed via the payment.refunded / payment.voided webhooks.
+     */
     public function supportsRefund(): bool
     {
-        return false;
+        return true;
     }
 
     public function supportsStatusCheck(): bool
@@ -78,7 +83,7 @@ final class MoamalatProvider implements PaymentProviderInterface
 
     public function supportsWebhook(): bool
     {
-        return false;
+        return true;
     }
 
     /**

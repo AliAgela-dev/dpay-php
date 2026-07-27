@@ -7,9 +7,10 @@ namespace DPay\Providers;
 use DPay\Dto\PaymentField;
 
 /**
- * SaharaPay — OTP via 7-digit card number, supports status check.
+ * SaharaPay — OTP via card number, supports status check.
  *
- * Default field schema: [card_number] (digits:7).
+ * Default field schema: [card_number] (digitsOneOf: 7 same-bank or 9
+ * cross-bank via OnePay).
  */
 final class SaharaPayProvider extends AbstractDPayProvider
 {
@@ -35,6 +36,6 @@ final class SaharaPayProvider extends AbstractDPayProvider
 
     protected function defaultFields(): array
     {
-        return [PaymentField::cardNumber(digits: 7)];
+        return [PaymentField::bankCardNumber()];
     }
 }

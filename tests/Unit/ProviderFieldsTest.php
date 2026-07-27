@@ -41,10 +41,20 @@ final class ProviderFieldsTest extends TestCase
         self::assertSame('/^09\d{8}$/', $fields[0]->regex);
     }
 
-    public function test_card_otp_providers_default_to_7_digit_card_field(): void
+    public function test_mobicash_defaults_to_7_digit_card_field(): void
+    {
+        $provider = new MobiCashProvider($this->client(), 'x');
+        $fields = $provider->requiredFields();
+
+        self::assertCount(1, $fields);
+        self::assertSame('card_number', $fields[0]->key);
+        self::assertSame(7, $fields[0]->digits);
+        self::assertNull($fields[0]->digitsOneOf);
+    }
+
+    public function test_bank_providers_default_to_7_or_9_digit_card_field(): void
     {
         foreach ([
-            MobiCashProvider::class,
             SaharaPayProvider::class,
             YousrPayProvider::class,
             MasrefyPayProvider::class,
@@ -54,7 +64,8 @@ final class ProviderFieldsTest extends TestCase
 
             self::assertCount(1, $fields, $cls);
             self::assertSame('card_number', $fields[0]->key, $cls);
-            self::assertSame(7, $fields[0]->digits, $cls);
+            self::assertNull($fields[0]->digits, $cls);
+            self::assertSame([7, 9], $fields[0]->digitsOneOf, $cls);
         }
     }
 

@@ -66,9 +66,9 @@ final class GatewayManagerTest extends TestCase
         $manager = (new GatewayManager())->register(new MoamalatProvider($c, 'moamalat'));
 
         self::assertSame([
-            'supports_refund' => false,
+            'supports_refund' => true,
             'supports_status_check' => true,
-            'supports_webhook' => false,
+            'supports_webhook' => true,
         ], $manager->features('moamalat'));
     }
 
