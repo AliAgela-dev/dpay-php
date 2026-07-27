@@ -22,6 +22,7 @@ use DPay\Client\DPayClientFactory;
 use DPay\Config\DPayConfig;
 use DPay\Dto\OpenSessionRequest;
 use DPay\Exceptions\DPayExceptionInterface;
+use DPay\Exceptions\DPaySessionNotFoundException;
 
 $apiKey = getenv('DPAY_API_KEY');
 
@@ -46,6 +47,27 @@ $client = DPayClientFactory::create(new DPayConfig(
 ));
 
 $runner = new ProbeRunner();
+
+echo "Verifying credentials...\n";
+
+try {
+    // A bogus id 404ing (DPaySessionNotFoundException) proves the token and
+    // base URL are valid — the request reached DPay and was authenticated,
+    // it just didn't find that session. Anything else at this point (auth
+    // failure, network error, or any other SDK exception) means the whole
+    // run would fail identically on every scenario, so abort loudly instead
+    // of grinding through 10 scenarios' worth of pacing and backoff blind.
+    $runner->paced(static fn () => $client->getSession(999999999));
+} catch (DPaySessionNotFoundException) {
+    // Expected — proceed.
+} catch (DPayExceptionInterface $e) {
+    fwrite(STDERR, "\n=== ABORTING: credentials or connectivity problem, 0 of 10 scenarios exercised ===\n");
+    fwrite(STDERR, $e::class.': '.$e->getMessage()."\n");
+    exit(1);
+}
+
+echo "Credentials OK.\n\n";
+
 $only = $options['provider'] ?? null;
 $otp = '111111';
 
