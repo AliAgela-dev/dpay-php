@@ -46,7 +46,7 @@ final class LaravelBridgeTest extends TestCase
     {
         $manager = $this->app->make(GatewayManager::class);
 
-        self::assertCount(6, $manager->all());
+        self::assertCount(7, $manager->all());
         self::assertContains('edfali', array_keys($manager->all()));
         self::assertContains('moamalat', array_keys($manager->all()));
     }
@@ -91,5 +91,26 @@ final class LaravelBridgeTest extends TestCase
         $reference = DPay::provider('moamalat')->sendOtp(50, []);
         self::assertNotSame('', $reference);
         self::assertTrue(DPay::provider('moamalat')->verifyOtp($reference, ''));
+    }
+
+    public function test_sadad_is_registered_but_disabled_by_default(): void
+    {
+        $manager = $this->app->make(\DPay\GatewayManager::class);
+
+        self::assertArrayHasKey('sadad', $manager->all());
+        self::assertNotContains('sadad', $manager->listEnabled());
+        self::assertFalse($manager->isEnabled('sadad'));
+    }
+
+    public function test_sadad_can_be_enabled_via_config(): void
+    {
+        config(['dpay.gateways.sadad.enabled' => true]);
+
+        // GatewayManager is a singleton built once at boot from config, so
+        // a runtime config change requires a fresh manager instance to see it.
+        $this->app->forgetInstance(\DPay\GatewayManager::class);
+        $manager = $this->app->make(\DPay\GatewayManager::class);
+
+        self::assertContains('sadad', $manager->listEnabled());
     }
 }

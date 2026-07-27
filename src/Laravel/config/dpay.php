@@ -6,6 +6,7 @@ use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MasrefyPayProvider;
 use DPay\Providers\MoamalatProvider;
 use DPay\Providers\MobiCashProvider;
+use DPay\Providers\SadadProvider;
 use DPay\Providers\SaharaPayProvider;
 use DPay\Providers\YousrPayProvider;
 
@@ -63,6 +64,11 @@ return [
             'enabled' => (bool) env('PAYMENT_GATEWAY_SAHARAPAY_ENABLED', true),
             'provider' => SaharaPayProvider::class,
             'pay_method' => env('DPAY_PAY_METHOD_SAHARAPAY', 'saharapay'),
+        ],
+        'sadad' => [
+            'enabled' => (bool) env('PAYMENT_GATEWAY_SADAD_ENABLED', false),
+            'provider' => SadadProvider::class,
+            'pay_method' => env('DPAY_PAY_METHOD_SADAD', 'sadad'),
         ],
         'moamalat' => [
             'enabled' => (bool) env('PAYMENT_GATEWAY_MOAMALAT_ENABLED', false),
