@@ -47,7 +47,15 @@ interface PaymentProviderInterface
     public function requiresOtp(): bool;
 
     /**
-     * Whether this provider supports refunds.
+     * Whether DPay supports refunds for this gateway.
+     *
+     * This describes DPay-side capability, NOT an SDK-invokable action —
+     * there is no refund()/void() method on this interface. Where true
+     * (currently Moamalat only), refunds and voids are triggered from the
+     * DPay dashboard and observed via the payment.refunded / payment.voided
+     * webhooks, not called through this SDK. Consumers building a checkout
+     * UI off GatewayManager::describe() should not render an in-app "Refund"
+     * action from this flag alone.
      */
     public function supportsRefund(): bool;
 
@@ -57,7 +65,13 @@ interface PaymentProviderInterface
     public function supportsStatusCheck(): bool;
 
     /**
-     * Whether this provider supports webhook callbacks.
+     * Whether DPay can deliver webhook events for this gateway.
+     *
+     * Webhooks are configured account-wide at Dashboard -> Webhooks, not
+     * per-gateway, so this is true for every provider. It signals that
+     * payment.paid/failed/expired/refunded/voided events are available for
+     * this gateway's sessions, not that this SDK verifies or receives them
+     * itself — see a later plan for webhook signature verification support.
      */
     public function supportsWebhook(): bool;
 

@@ -66,6 +66,7 @@ abstract class AbstractDPayProvider implements PaymentProviderInterface
 
     public function supportsWebhook(): bool
     {
+        // See PaymentProviderInterface::supportsWebhook() for what this flag means.
         return true;
     }
 

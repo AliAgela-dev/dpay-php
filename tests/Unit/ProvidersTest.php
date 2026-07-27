@@ -178,7 +178,7 @@ final class ProvidersTest extends TestCase
         yield 'masrefypay' => [\DPay\Providers\MasrefyPayProvider::class, [7, 9], null];
         yield 'yousrpay' => [\DPay\Providers\YousrPayProvider::class, [7, 9], null];
         yield 'saharapay' => [\DPay\Providers\SaharaPayProvider::class, [7, 9], null];
-        yield 'mobicash is seven only' => [\DPay\Providers\MobiCashProvider::class, null, 7];
+        yield 'mobicash' => [\DPay\Providers\MobiCashProvider::class, null, 7];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('cardRules')]
