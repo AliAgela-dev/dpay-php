@@ -7,6 +7,7 @@ namespace DPay\Tests\Unit\Webhooks;
 use DPay\Exceptions\WebhookSignatureMismatchException;
 use DPay\Exceptions\WebhookTimestampExpiredException;
 use DPay\Webhooks\WebhookVerifier;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
 final class WebhookVerifierTest extends TestCase
@@ -105,6 +106,32 @@ final class WebhookVerifierTest extends TestCase
         $this->expectException(WebhookTimestampExpiredException::class);
 
         (new WebhookVerifier(self::SECRET))->verify($body, $this->sign($body, 'not-a-timestamp'), 'not-a-timestamp');
+    }
+
+    public function test_an_empty_secret_is_rejected_at_construction(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new WebhookVerifier('');
+    }
+
+    public function test_an_empty_signature_header_is_rejected(): void
+    {
+        $body = '{"event":"payment.paid","session_id":42}';
+        $timestamp = (string) time();
+
+        $this->expectException(WebhookSignatureMismatchException::class);
+
+        (new WebhookVerifier(self::SECRET))->verify($body, '', $timestamp);
+    }
+
+    public function test_an_empty_timestamp_header_is_rejected(): void
+    {
+        $body = '{"event":"payment.paid","session_id":42}';
+
+        $this->expectException(WebhookTimestampExpiredException::class);
+
+        (new WebhookVerifier(self::SECRET))->verify($body, 'irrelevant', '');
     }
 
     public function test_exception_messages_never_contain_the_secret_or_expected_signature(): void

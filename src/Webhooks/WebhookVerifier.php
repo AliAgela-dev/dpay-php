@@ -6,6 +6,7 @@ namespace DPay\Webhooks;
 
 use DPay\Exceptions\WebhookSignatureMismatchException;
 use DPay\Exceptions\WebhookTimestampExpiredException;
+use InvalidArgumentException;
 
 /**
  * Verifies a DPay webhook request against X-DPAY-Signature and
@@ -22,9 +23,23 @@ use DPay\Exceptions\WebhookTimestampExpiredException;
  */
 final class WebhookVerifier
 {
+    // Private deliberately: if this were public, a natural future test
+    // would be time() - (self::MAX_AGE_SECONDS + 1), which would silently
+    // track any accidental widening of the window instead of catching it.
+    // See test_a_timestamp_one_second_past_the_window_is_rejected, which
+    // uses a hardcoded literal specifically to avoid that trap.
     private const MAX_AGE_SECONDS = 300;
 
-    public function __construct(private readonly string $secret) {}
+    public function __construct(private readonly string $secret)
+    {
+        if ($this->secret === '') {
+            throw new InvalidArgumentException(
+                'WebhookVerifier requires a non-empty secret. Set DPAY_WEBHOOK_SECRET '
+                .'(Laravel) or pass one explicitly — an empty secret would silently '
+                .'reject every webhook rather than signal misconfiguration.',
+            );
+        }
+    }
 
     /**
      * @throws WebhookTimestampExpiredException if the timestamp is missing,
@@ -33,7 +48,7 @@ final class WebhookVerifier
      */
     public function verify(string $rawBody, string $signature, string $timestamp): void
     {
-        if (! ctype_digit(ltrim($timestamp, '-')) || $timestamp === '' || $timestamp === '-') {
+        if (! ctype_digit($timestamp)) {
             throw new WebhookTimestampExpiredException(
                 'X-DPAY-Timestamp is missing or not a valid integer.',
             );
