@@ -82,6 +82,22 @@ final class WebhookVerifierTest extends TestCase
         (new WebhookVerifier(self::SECRET))->verify($body, $this->sign($body, $fourMinutesAgo), $fourMinutesAgo);
     }
 
+    public function test_a_timestamp_one_second_past_the_window_is_rejected(): void
+    {
+        // Deliberately does NOT pair this with a test at exactly -300s expecting
+        // success — that boundary can't be pinned without flakiness under random
+        // test order (a clock tick during the test would push it to -301 and fail
+        // spuriously). -301 has slack: even if a tick pushes it to -302, it's
+        // still correctly rejected. This closes the silent-widening gap where
+        // MAX_AGE_SECONDS could drift up by tens of seconds undetected.
+        $body = '{"event":"payment.paid","session_id":42}';
+        $justOutside = (string) (time() - 301);
+
+        $this->expectException(WebhookTimestampExpiredException::class);
+
+        (new WebhookVerifier(self::SECRET))->verify($body, $this->sign($body, $justOutside), $justOutside);
+    }
+
     public function test_a_non_numeric_timestamp_is_rejected(): void
     {
         $body = '{"event":"payment.paid","session_id":42}';
