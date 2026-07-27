@@ -6,6 +6,7 @@ namespace DPay\Providers;
 
 use DPay\Client\DPayClientInterface;
 use DPay\Contracts\PaymentProviderInterface;
+use DPay\Dto\OpenSessionRequest;
 use DPay\Dto\PaymentField;
 
 /**
@@ -95,10 +96,10 @@ final class MoamalatProvider implements PaymentProviderInterface
      */
     public function sendOtp(float $amount, array $fields): string
     {
-        $session = $this->client->openSession(
+        $session = $this->client->openSession(new OpenSessionRequest(
             payMethod: $this->payMethod,
             amount: $amount,
-        );
+        ));
 
         return (string) $session->sessionId;
     }

@@ -6,6 +6,7 @@ namespace DPay\Tests\Feature;
 
 use DPay\Client\DPayClientInterface;
 use DPay\Config\DPayConfig;
+use DPay\Dto\OpenSessionRequest;
 use DPay\GatewayManager;
 use DPay\Laravel\DPayServiceProvider;
 use DPay\Laravel\Facades\DPay;
@@ -62,7 +63,9 @@ final class LaravelBridgeTest extends TestCase
 
     public function test_facade_open_session_uses_mock(): void
     {
-        $resp = DPay::openSession('edfali', 50, '0911234567');
+        $resp = DPay::openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+        );
 
         self::assertGreaterThan(0, $resp->sessionId);
         self::assertSame('LYD', $resp->currency);

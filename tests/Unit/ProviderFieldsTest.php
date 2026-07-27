@@ -7,6 +7,7 @@ namespace DPay\Tests\Unit;
 use DPay\Client\DPayClient;
 use DPay\Config\DPayConfig;
 use DPay\Dto\PaymentField;
+use DPay\Http\Transport;
 use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MasrefyPayProvider;
 use DPay\Providers\MoamalatProvider;
@@ -22,12 +23,11 @@ final class ProviderFieldsTest extends TestCase
     private function client(): DPayClient
     {
         $f = new Psr17Factory();
+        $config = new DPayConfig();
 
         return new DPayClient(
-            config: new DPayConfig(),
-            httpClient: new FakeHttpClient(),
-            requestFactory: $f,
-            streamFactory: $f,
+            config: $config,
+            transport: new Transport($config, new FakeHttpClient(), $f, $f),
         );
     }
 
@@ -81,7 +81,8 @@ final class ProviderFieldsTest extends TestCase
             'fee' => 0, 'fee_amount' => 0, 'total' => 50, 'pay_method' => 'x', 'expired_at' => '', 'data' => null,
         ]);
         $f = new Psr17Factory();
-        $c = new DPayClient(config: new DPayConfig(), httpClient: $http, requestFactory: $f, streamFactory: $f);
+        $config = new DPayConfig();
+        $c = new DPayClient($config, new Transport($config, $http, $f, $f));
 
         $edfali = new EdfaliProvider($c, 'edfali');
         $edfali->sendOtp(50, ['phone_number' => '0911234567', 'card_number' => '4242']);
@@ -96,7 +97,8 @@ final class ProviderFieldsTest extends TestCase
             'session_id' => 2, 'status' => 'pending', 'amount' => 50, 'currency' => 'LYD',
             'fee' => 0, 'fee_amount' => 0, 'total' => 50, 'pay_method' => 'x', 'expired_at' => '', 'data' => null,
         ]);
-        $c2 = new DPayClient(config: new DPayConfig(), httpClient: $http2, requestFactory: $f, streamFactory: $f);
+        $config2 = new DPayConfig();
+        $c2 = new DPayClient($config2, new Transport($config2, $http2, $f, $f));
         $mobicash = new MobiCashProvider($c2, 'mobicash');
         $mobicash->sendOtp(50, ['phone_number' => '0911234567', 'card_number' => '1234567']);
 

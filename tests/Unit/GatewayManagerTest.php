@@ -8,6 +8,7 @@ use DPay\Client\DPayClient;
 use DPay\Config\DPayConfig;
 use DPay\Exceptions\UnknownProviderException;
 use DPay\GatewayManager;
+use DPay\Http\Transport;
 use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MoamalatProvider;
 use DPay\Tests\Unit\Support\FakeHttpClient;
@@ -19,12 +20,11 @@ final class GatewayManagerTest extends TestCase
     private function client(): DPayClient
     {
         $f = new Psr17Factory();
+        $config = new DPayConfig();
 
         return new DPayClient(
-            config: new DPayConfig(),
-            httpClient: new FakeHttpClient(),
-            requestFactory: $f,
-            streamFactory: $f,
+            config: $config,
+            transport: new Transport($config, new FakeHttpClient(), $f, $f),
         );
     }
 

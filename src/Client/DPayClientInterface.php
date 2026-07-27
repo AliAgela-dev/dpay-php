@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DPay\Client;
 
 use DPay\Dto\GetSessionResponse;
+use DPay\Dto\OpenSessionRequest;
 use DPay\Dto\OpenSessionResponse;
 use DPay\Dto\VerifySessionResponse;
 use DPay\Exceptions\DPayException;
@@ -19,17 +20,15 @@ use DPay\Exceptions\DPayException;
 interface DPayClientInterface
 {
     /**
-     * Open a payment session on DPay.
+     * Open a payment session.
+     *
+     * @param  string|null  $idempotencyKey  Optional unique key. Replaying the
+     *                                       same key returns the original
+     *                                       session instead of opening a duplicate.
      *
      * @throws DPayException on validation errors, auth failures, or network issues
      */
-    public function openSession(
-        string $payMethod,
-        float $amount,
-        ?string $customerMobile = null,
-        ?string $cardNumber = null,
-        ?string $description = null,
-    ): OpenSessionResponse;
+    public function openSession(OpenSessionRequest $request, ?string $idempotencyKey = null): OpenSessionResponse;
 
     /**
      * Verify a payment session with OTP.

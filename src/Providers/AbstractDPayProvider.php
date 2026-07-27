@@ -6,6 +6,7 @@ namespace DPay\Providers;
 
 use DPay\Client\DPayClientInterface;
 use DPay\Contracts\PaymentProviderInterface;
+use DPay\Dto\OpenSessionRequest;
 use DPay\Dto\PaymentField;
 
 /**
@@ -95,12 +96,12 @@ abstract class AbstractDPayProvider implements PaymentProviderInterface
             }
         }
 
-        $session = $this->client->openSession(
+        $session = $this->client->openSession(new OpenSessionRequest(
             payMethod: $this->payMethod,
             amount: $amount,
             customerMobile: $phoneNumber,
             cardNumber: $cardNumber,
-        );
+        ));
 
         return (string) $session->sessionId;
     }

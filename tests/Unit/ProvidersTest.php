@@ -6,6 +6,7 @@ namespace DPay\Tests\Unit;
 
 use DPay\Client\DPayClient;
 use DPay\Config\DPayConfig;
+use DPay\Http\Transport;
 use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MasrefyPayProvider;
 use DPay\Providers\MoamalatProvider;
@@ -22,11 +23,11 @@ final class ProvidersTest extends TestCase
     {
         $f = new Psr17Factory();
 
+        $config = new DPayConfig(baseUrl: 'https://dpay.example/api', apiKey: 'k');
+
         return new DPayClient(
-            config: new DPayConfig(baseUrl: 'https://dpay.example/api', apiKey: 'k'),
-            httpClient: $http,
-            requestFactory: $f,
-            streamFactory: $f,
+            config: $config,
+            transport: new Transport($config, $http, $f, $f),
         );
     }
 

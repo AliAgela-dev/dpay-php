@@ -7,6 +7,7 @@ namespace DPay\Tests\Feature;
 use DPay\Client\DPayClient;
 use DPay\Config\DPayConfig;
 use DPay\Dto\PaymentField;
+use DPay\Http\Transport;
 use DPay\Laravel\PaymentFieldRules;
 use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MobiCashProvider;
@@ -23,12 +24,11 @@ final class PaymentFieldRulesTest extends TestCase
     private function client(): DPayClient
     {
         $f = new Psr17Factory();
+        $config = new DPayConfig();
 
         return new DPayClient(
-            config: new DPayConfig(),
-            httpClient: new FakeHttpClient(),
-            requestFactory: $f,
-            streamFactory: $f,
+            config: $config,
+            transport: new Transport($config, new FakeHttpClient(), $f, $f),
         );
     }
 

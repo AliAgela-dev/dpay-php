@@ -6,6 +6,7 @@ namespace DPay\Tests\Unit;
 
 use DPay\Client\DPayClient;
 use DPay\Config\DPayConfig;
+use DPay\Dto\OpenSessionRequest;
 use DPay\Dto\SessionStatus;
 use DPay\Exceptions\DPayAuthException;
 use DPay\Exceptions\DPayException;
@@ -13,6 +14,7 @@ use DPay\Exceptions\DPayNetworkException;
 use DPay\Exceptions\DPayRateLimitException;
 use DPay\Exceptions\DPaySessionNotFoundException;
 use DPay\Exceptions\DPayValidationException;
+use DPay\Http\Transport;
 use DPay\Support\MockTransport;
 use DPay\Tests\Unit\Support\FakeHttpClient;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -31,20 +33,17 @@ final class DPayClientTest extends TestCase
     {
         $this->http = new FakeHttpClient();
         $this->psr17 = new Psr17Factory();
+
+        $config = new DPayConfig(
+            baseUrl: 'https://dpay.example/api',
+            apiKey: 'test-key',
+            timeout: 5,
+            mock: false,
+        );
+
         $this->client = new DPayClient(
-            config: new DPayConfig(
-                baseUrl: 'https://dpay.example/api',
-                apiKey: 'test-key',
-                timeout: 5,
-                mock: false,
-                // Explicit floor (above the DPayConfig default of 0.01) so
-                // test_open_session_rejects_amount_below_minimum still
-                // exercises the below-minimum rejection path.
-                minAmount: 5.0,
-            ),
-            httpClient: $this->http,
-            requestFactory: $this->psr17,
-            streamFactory: $this->psr17,
+            config: $config,
+            transport: new Transport($config, $this->http, $this->psr17, $this->psr17),
         );
     }
 
@@ -63,7 +62,9 @@ final class DPayClientTest extends TestCase
             'data' => null,
         ]);
 
-        $resp = $this->client->openSession('edfali', 50, '0911234567');
+        $resp = $this->client->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+        );
 
         self::assertSame(4242, $resp->sessionId);
         self::assertSame(SessionStatus::PENDING, $resp->status);
@@ -83,27 +84,15 @@ final class DPayClientTest extends TestCase
         ], $body);
     }
 
-    public function test_open_session_rejects_fractional_amount(): void
-    {
-        $this->expectException(DPayValidationException::class);
-        $this->expectExceptionMessage('whole number');
-        $this->client->openSession('edfali', 50.5);
-    }
-
-    public function test_open_session_rejects_amount_below_minimum(): void
-    {
-        $this->expectException(DPayValidationException::class);
-        $this->expectExceptionMessage('below the minimum');
-        $this->client->openSession('edfali', 1);
-    }
-
     public function test_open_session_maps_422_to_validation_exception(): void
     {
         $this->http->queueJson(422, ['message' => 'pay_method is required']);
 
         $this->expectException(DPayValidationException::class);
         $this->expectExceptionMessage('pay_method is required');
-        $this->client->openSession('edfali', 50, '0911234567');
+        $this->client->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+        );
     }
 
     public function test_open_session_maps_401_to_auth_exception(): void
@@ -111,7 +100,9 @@ final class DPayClientTest extends TestCase
         $this->http->queueJson(401, ['message' => 'invalid api key']);
 
         $this->expectException(DPayAuthException::class);
-        $this->client->openSession('edfali', 50, '0911234567');
+        $this->client->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+        );
     }
 
     public function test_open_session_maps_429_to_rate_limit_exception(): void
@@ -120,7 +111,9 @@ final class DPayClientTest extends TestCase
 
         $this->expectException(DPayRateLimitException::class);
         $this->expectExceptionMessage('Too Many Attempts');
-        $this->client->openSession('edfali', 50, '0911234567');
+        $this->client->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+        );
     }
 
     public function test_open_session_captures_message_field(): void
@@ -139,7 +132,9 @@ final class DPayClientTest extends TestCase
             'sandbox' => true,
         ]);
 
-        $resp = $this->client->openSession('edfali', 50, '0911234567');
+        $resp = $this->client->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+        );
 
         self::assertSame('Payment session created successfully', $resp->message);
         self::assertSame('LYD', $resp->currency, 'currency defaults to LYD when not in response');
@@ -151,7 +146,9 @@ final class DPayClientTest extends TestCase
         $this->http->queueJson(500, ['message' => 'internal error']);
 
         try {
-            $this->client->openSession('edfali', 50, '0911234567');
+            $this->client->openSession(
+                new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+            );
             self::fail('Expected DPayException');
         } catch (DPayValidationException | DPayAuthException | DPaySessionNotFoundException $e) {
             self::fail('Should not match a 4xx subclass; got '.$e::class);
@@ -166,7 +163,9 @@ final class DPayClientTest extends TestCase
 
         $this->expectException(DPayNetworkException::class);
         $this->expectExceptionMessage('Failed to reach DPay: boom');
-        $this->client->openSession('edfali', 50, '0911234567');
+        $this->client->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+        );
     }
 
     public function test_verify_session_returns_null_for_bad_otp(): void
@@ -232,15 +231,16 @@ final class DPayClientTest extends TestCase
 
     public function test_mock_mode_bypasses_http(): void
     {
+        $mockConfig = new DPayConfig(mock: true);
         $mockClient = new DPayClient(
-            config: new DPayConfig(mock: true),
-            httpClient: $this->http,
-            requestFactory: $this->psr17,
-            streamFactory: $this->psr17,
+            config: $mockConfig,
+            transport: new Transport($mockConfig, $this->http, $this->psr17, $this->psr17),
             mockTransport: new MockTransport(),
         );
 
-        $session = $mockClient->openSession('edfali', 50, '0911234567');
+        $session = $mockClient->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50, customerMobile: '0911234567'),
+        );
         self::assertSame(SessionStatus::PENDING, $session->status);
         self::assertSame(50.0, $session->amount);
         self::assertSame([], $this->http->sent, 'mock mode must not hit the HTTP client');
@@ -250,5 +250,60 @@ final class DPayClientTest extends TestCase
         self::assertTrue($verified->isPaid());
 
         self::assertNull($mockClient->verifySession($session->sessionId, 'abc'));
+    }
+
+    public function test_fractional_amount_is_now_accepted(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(200, ['session_id' => 7, 'status' => 'pending', 'amount' => 10.5]);
+
+        $response = $this->clientWith($http)->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 10.5, customerMobile: '0912345678'),
+        );
+
+        self::assertSame(7, $response->sessionId);
+        self::assertStringContainsString('"amount":10.5', (string) $http->lastRequest()->getBody());
+    }
+
+    public function test_amount_below_minimum_is_still_rejected(): void
+    {
+        $this->expectException(DPayValidationException::class);
+
+        $this->clientWith(new FakeHttpClient(), new DPayConfig(apiKey: 'k', minAmount: 5.0))
+            ->openSession(new OpenSessionRequest(payMethod: 'edfali', amount: 1.0));
+    }
+
+    public function test_idempotency_key_is_sent_as_a_header(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(200, ['session_id' => 1, 'status' => 'pending']);
+
+        $this->clientWith($http)->openSession(
+            new OpenSessionRequest(payMethod: 'edfali', amount: 50),
+            'b3e1c9f0-0000-4000-8000-000000000000',
+        );
+
+        self::assertSame(
+            'b3e1c9f0-0000-4000-8000-000000000000',
+            $http->lastRequest()->getHeaderLine('Idempotency-Key'),
+        );
+    }
+
+    public function test_no_idempotency_header_when_key_is_omitted(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(200, ['session_id' => 1, 'status' => 'pending']);
+
+        $this->clientWith($http)->openSession(new OpenSessionRequest(payMethod: 'edfali', amount: 50));
+
+        self::assertFalse($http->lastRequest()->hasHeader('Idempotency-Key'));
+    }
+
+    private function clientWith(FakeHttpClient $http, ?DPayConfig $config = null): DPayClient
+    {
+        $psr17 = new Psr17Factory();
+        $config ??= new DPayConfig(apiKey: 'k');
+
+        return new DPayClient(
+            $config,
+            new Transport($config, $http, $psr17, $psr17),
+        );
     }
 }
