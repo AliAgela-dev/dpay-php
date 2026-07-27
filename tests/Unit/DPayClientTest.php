@@ -157,6 +157,18 @@ final class DPayClientTest extends TestCase
         }
     }
 
+    public function test_open_session_falls_back_to_a_generic_message_when_the_error_body_has_none(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(500, []);
+
+        try {
+            $this->clientWith($http)->openSession(new OpenSessionRequest(payMethod: 'edfali', amount: 50));
+            self::fail('Expected a DPayException.');
+        } catch (DPayException $e) {
+            self::assertSame('DPay request failed.', $e->getMessage());
+        }
+    }
+
     public function test_open_session_wraps_transport_failure_in_network_exception(): void
     {
         $this->http->throwOnNext = new RuntimeException('boom');

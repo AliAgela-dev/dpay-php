@@ -6,6 +6,7 @@ namespace DPay\Tests\Unit\Http;
 
 use DPay\Config\DPayConfig;
 use DPay\Exceptions\DPayAuthException;
+use DPay\Exceptions\DPayException;
 use DPay\Exceptions\DPayNetworkException;
 use DPay\Exceptions\DPayRateLimitException;
 use DPay\Exceptions\DPayValidationException;
@@ -61,6 +62,18 @@ final class TransportTest extends TestCase
 
         $this->expectException(DPayRateLimitException::class);
         $this->transport($http)->request('GET', '/x');
+    }
+
+    public function test_a_message_less_error_body_falls_back_to_a_generic_message(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(500, []);
+
+        try {
+            $this->transport($http)->request('GET', '/x');
+            self::fail('Expected a DPayException.');
+        } catch (DPayException $e) {
+            self::assertSame('DPay request failed.', $e->getMessage());
+        }
     }
 
     public function test_attempt_returns_null_instead_of_throwing(): void
