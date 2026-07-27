@@ -8,7 +8,9 @@ namespace DPay\Dto;
  * Input for DPayClient::openSession.
  *
  * Field names and types follow the official spec at https://dpay.ly/docs/api.
- *   - amount      : LYD. Decimals allowed, minimum 0.01. NEVER cast to int.
+ *   - amount      : LYD, decimals allowed. NEVER cast to int. The minimum is
+ *                   enforced by DPayClient against DPayConfig::$minAmount,
+ *                   not here.
  *   - description : top-level field (MobiCash), NOT nested under data.
  *   - data        : free-form merchant metadata, echoed back in webhooks.
  *   - birthYear   : Sadad only, 4 digits, checked against the wallet record.

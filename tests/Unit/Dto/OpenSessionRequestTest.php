@@ -37,6 +37,39 @@ final class OpenSessionRequestTest extends TestCase
         self::assertArrayNotHasKey('data', $body);
     }
 
+    public function test_description_and_data_are_independent_top_level_keys(): void
+    {
+        $body = (new OpenSessionRequest(
+            payMethod: 'mobicash',
+            amount: 10,
+            cardNumber: '7279627',
+            description: 'Order #1234',
+            data: ['order_id' => 'ORD-001'],
+        ))->toBody();
+
+        self::assertSame('Order #1234', $body['description']);
+        self::assertSame(['order_id' => 'ORD-001'], $body['data']);
+        // The regression guard: description must never be folded back into data.
+        self::assertArrayNotHasKey('description', $body['data']);
+    }
+
+    public function test_a_decimal_amount_survives_a_full_multi_field_body(): void
+    {
+        $body = (new OpenSessionRequest(
+            payMethod: 'mobicash',
+            amount: 10.50,
+            cardNumber: '7279627',
+            description: 'Order #1234',
+            data: ['order_id' => 'ORD-001'],
+        ))->toBody();
+
+        self::assertSame(
+            '{"pay_method":"mobicash","amount":10.5,"card_number":"7279627",'
+            .'"description":"Order #1234","data":{"order_id":"ORD-001"}}',
+            json_encode($body),
+        );
+    }
+
     public function test_data_carries_free_form_metadata(): void
     {
         $body = (new OpenSessionRequest(
