@@ -1,13 +1,14 @@
 # dpay-php
 
 Framework-agnostic PHP SDK for the **DPay** payment gateway (Libya), with
-provider abstractions for Edfali, MobiCash, SaharaPay, YousrPay,
+provider abstractions for Edfali, MobiCash, Sadad, SaharaPay, YousrPay,
 MasrefyPay, and Moamalat. Ships an optional Laravel bridge.
 
-Reverse-engineered from the production `health-portal` implementation. **The
-field names and endpoint paths are believed correct but have not been validated
-against an official DPay spec.** Run against DPay's sandbox and adjust before
-flipping `mock => false` in production.
+Reverse-engineered from the production `health-portal` implementation, then
+aligned against DPay's official API spec (https://dpay.ly/docs/api) and
+live-verified against their sandbox — see [SANDBOX-VALIDATION.md](SANDBOX-VALIDATION.md).
+Sandbox credentials are per-merchant; get your own before flipping
+`mock => false` in production.
 
 ---
 
@@ -45,6 +46,7 @@ composer require aliagela-dev/dpay-php
 use DPay\Client\DPayClient;
 use DPay\Client\DPayClientFactory;
 use DPay\Config\DPayConfig;
+use DPay\Dto\OpenSessionRequest;
 use DPay\GatewayManager;
 use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MoamalatProvider;
@@ -54,13 +56,17 @@ $config = new DPayConfig(
     apiKey: getenv('DPAY_API_KEY'),
     timeout: 15,
     mock: false,
-    minAmount: 5,
+    minAmount: 0.01,
 );
 
 $client = DPayClientFactory::create($config);   // Guzzle-backed by default
 
 // A) Talk to DPay directly:
-$session = $client->openSession('edfali', 50, customerMobile: '0911234567');
+$session = $client->openSession(new OpenSessionRequest(
+    payMethod: 'edfali',
+    amount: 50.0,
+    customerMobile: '0911234567',
+));
 $verify  = $client->verifySession($session->sessionId, '1234');
 
 if ($verify?->isPaid()) {
@@ -95,7 +101,7 @@ DPAY_BASE_URL=https://dpay.ly/api
 DPAY_API_KEY=your-key
 DPAY_TIMEOUT=15
 DPAY_MOCK=true
-DPAY_MIN_AMOUNT=5
+DPAY_MIN_AMOUNT=0.01
 
 PAYMENT_GATEWAY_EDFALI_ENABLED=true
 PAYMENT_GATEWAY_MOBICASH_ENABLED=true
@@ -103,13 +109,14 @@ PAYMENT_GATEWAY_MOBICASH_ENABLED=true
 ```
 
 ```php
+use DPay\Dto\OpenSessionRequest;
 use DPay\Laravel\Facades\DPay;
 
 $reference = DPay::provider('edfali')->sendOtp(50, ['phone_number' => '0911234567']);
 $paid      = DPay::provider('edfali')->verifyOtp($reference, '1234');
 
 // Lower-level access to the client:
-$session = DPay::openSession('moamalat', 50);
+$session = DPay::openSession(new OpenSessionRequest(payMethod: 'moamalat', amount: 50.0));
 $status  = DPay::getSession($session->sessionId);
 ```
 
@@ -124,7 +131,7 @@ $status  = DPay::getSession($session->sessionId);
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Something broke — what does this exception mean, what to check. |
 | [docs/dto-reference.md](docs/dto-reference.md) | You want every field of every response object in one place. |
 | [docs/configuration.md](docs/configuration.md) | Full env-var + config-key reference, with the `required_fields` override format. |
-| [docs/sandbox-testing.md](docs/sandbox-testing.md) | _(Stub)_ How to go from mock to live once DPay sandbox creds arrive. |
+| [docs/sandbox-testing.md](docs/sandbox-testing.md) | You have sandbox creds and want to run the live probe, or need the sandbox test-input cheat sheet. |
 
 ---
 
@@ -137,12 +144,14 @@ $status  = DPay::getSession($session->sessionId);
 | `saharapay`  | `SaharaPayProvider`  | true  | **true** | `card_number` |
 | `yousrpay`   | `YousrPayProvider`   | true  | **true** | `card_number` |
 | `masrefypay` | `MasrefyPayProvider` | true  | **true** | `card_number` |
+| `sadad`      | `SadadProvider`      | true  | false | `phone_number`, `birth_year`, `category` (optional) |
 | `moamalat`   | `MoamalatProvider`   | **false** | true | (none — payment-link flow) |
 
-> **Sadad / Yaser** are not shipped — DPay's sandbox doesn't enable them
-> for our merchant (returns `500 "Unsupported payment method"`). They'll
-> be added back when DPay enables them. To re-add manually if your
-> tenant supports them, see [docs/extending.md](docs/extending.md).
+> **Sadad ships disabled by default** (`PAYMENT_GATEWAY_SADAD_ENABLED=false`) —
+> it's merchant-gated on DPay's side, not missing SDK support. Confirm with
+> DPay that Sadad is enabled on your merchant account before flipping it on.
+> **Yaser** is not shipped — it does not appear in the official DPay spec at
+> all.
 
 Every concrete provider sets its identity (`code`, `displayName`, `logo`) and
 which fields it pulls from the `$fields` array passed to `sendOtp()`. The
@@ -213,12 +222,16 @@ $request->validate(
 Set `mock: true` (or `DPAY_MOCK=true` in Laravel) and the client bypasses HTTP
 entirely:
 
-- `openSession` returns a synthetic session with a random `session_id` (1–99999)
-- `verifySession` accepts **any 4–6 digit numeric OTP** and returns `paid`
-- `getSession` returns `paid` for any id
+- `openSession` returns a synthetic session with a random `session_id`
+  (1–99999) and a session lifetime of 10 minutes for `moamalat`/`sadad`,
+  15 minutes for everything else — matching DPay's documented expiries.
+- `verifySession` accepts **any 4–6 digit numeric OTP except `000000`**,
+  which simulates a decline (mirrors the sandbox). A matching OTP returns
+  `paid`; `000000` or a non-numeric/wrong-length value returns `null`.
+- `getSession` returns `paid` for any id.
 
-Useful for local dev and for the test suite — same behavior as the original
-health-portal mock.
+Useful for local dev and for the test suite — same behavior as the real
+DPay sandbox for these cases.
 
 ---
 
