@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   events (`PaymentEvent` for the 5 payment.* events, `TestEvent` for
   webhook.test's distinct shape).
 - Laravel bridge: opt-in webhook receiver route (`dpay.webhooks.enabled`,
-  off by default) and `DPayWebhookReceived` event.
+  off by default), `DPayWebhookReceived` event, and a `dpay.webhooks.middleware`
+  config key for applying rate limiting or other middleware to the route.
 
 ### Changed
 - `AbstractDPayProvider::sendOtp()` maps every declared field by its wire
@@ -31,6 +32,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same-bank **or** 9-digit cross-bank (OnePay) cards. MobiCash stays 7-only.
 - `openSession()` takes an `OpenSessionRequest` DTO and an optional
   `Idempotency-Key` instead of positional scalar arguments. **Breaking.**
+- `DPayClient`'s constructor now takes a `DPay\Http\Transport` instead of
+  PSR-18/17 clients and a logger directly — those moved onto `Transport`,
+  which owns HTTP plumbing so `DPayClient` only owns endpoint semantics.
+  **Breaking** for anyone constructing `DPayClient` directly (not via
+  `DPayClientFactory`, which absorbs the change).
+- `supportsWebhook()` now returns `true` for every provider (was `false`
+  everywhere) — webhooks are configured account-wide on DPay's side, not
+  per-gateway. `MoamalatProvider::supportsRefund()` now returns `true`
+  (refunds/voids are dashboard-triggered and observed via webhooks, not
+  SDK-invokable, but DPay does support them for Moamalat). Both flip the
+  JSON shape of `GatewayManager::describe()`.
 
 ### Fixed
 - `SessionStatus` gains `VOIDED`.
