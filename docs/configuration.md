@@ -17,7 +17,7 @@ Set them in your `.env`.
 | `DPAY_API_KEY` | _empty_ | yes (in prod) | Used as `Authorization: Bearer <key>`. |
 | `DPAY_TIMEOUT` | `15` | no | Seconds. Bump if you see frequent `DPayNetworkException` timeouts. |
 | `DPAY_MOCK` | `true` | no | When true, no HTTP traffic. **Set to false in staging+prod.** |
-| `DPAY_MIN_AMOUNT` | `5` | no | LYD floor. Anything below throws `DPayValidationException` pre-flight. |
+| `DPAY_MIN_AMOUNT` | `0.01` | no | LYD floor, decimals allowed. Anything below throws `DPayValidationException` pre-flight. |
 
 ### Per-gateway enable
 
@@ -46,6 +46,21 @@ DPay's API uses string identifiers for each gateway (`edfali`, `mobicash`,
 | `DPAY_PAY_METHOD_SADAD` | `sadad` |
 | `DPAY_PAY_METHOD_MOAMALAT` | `moamalat` |
 
+### Webhooks
+
+Off by default — enabling the route is a deliberate opt-in, not automatic.
+See [webhooks.md](webhooks.md) for the full setup.
+
+| Variable | Default | Required | Notes |
+|---|---|---|---|
+| `DPAY_WEBHOOKS_ENABLED` | `false` | no | Registers the receiver route when true. Resolves `WebhookVerifier` eagerly at boot, so a missing secret fails at deploy time, not on your first real webhook. |
+| `DPAY_WEBHOOK_ROUTE` | `/webhooks/dpay` | no | The path DPay POSTs to. |
+| `DPAY_WEBHOOK_SECRET` | _empty_ | yes, if enabled | From Dashboard → Webhooks → Reveal Secret. `WebhookVerifier` refuses to construct with an empty secret. |
+
+The `middleware` config key (`src/Laravel/config/dpay.php`) isn't
+env-driven — edit the published config file directly if you want e.g.
+`['throttle:60,1']` on the route.
+
 ---
 
 ## `config/dpay.php` keys
@@ -59,7 +74,7 @@ return [
     'api_key'    => env('DPAY_API_KEY', ''),
     'timeout'    => (int) env('DPAY_TIMEOUT', 15),
     'mock'       => (bool) env('DPAY_MOCK', true),
-    'min_amount' => (int) env('DPAY_MIN_AMOUNT', 5),
+    'min_amount' => (float) env('DPAY_MIN_AMOUNT', 0.01),
 
     'gateways' => [
         'edfali' => [
@@ -68,7 +83,16 @@ return [
             'pay_method'      => env('DPAY_PAY_METHOD_EDFALI', 'edfali'),
             'required_fields' => null,   // optional — see below
         ],
-        // ... seven more gateways
+        // ... six more gateways: mobicash, masrefypay, yousrpay,
+        // saharapay, sadad, moamalat
+    ],
+
+    // Off by default. See "Webhooks" above.
+    'webhooks' => [
+        'enabled' => (bool) env('DPAY_WEBHOOKS_ENABLED', false),
+        'route'   => env('DPAY_WEBHOOK_ROUTE', '/webhooks/dpay'),
+        'secret'  => env('DPAY_WEBHOOK_SECRET', ''),
+        'middleware' => [],
     ],
 ];
 ```
@@ -124,24 +148,35 @@ new DPayConfig(
     apiKey:  '...',                  // string
     timeout: 15,                     // int >= 1
     mock:    false,                  // bool
-    minAmount: 5,                    // int >= 0
+    minAmount: 0.01,                 // float >= 0, defaults to DPay's documented minimum
 );
 ```
 
 ### `DPayClient`
 
+`DPayClient` takes a `Transport` (the HTTP plumbing), not raw PSR-18/17
+objects directly — `Transport` owns those:
+
 ```php
-new DPayClient(
+use DPay\Http\Transport;
+
+$transport = new Transport(
     config: $config,                       // DPayConfig
     httpClient: $psr18,                    // Psr\Http\Client\ClientInterface
     requestFactory: $psr17,                // Psr\Http\Message\RequestFactoryInterface
     streamFactory:  $psr17,                // Psr\Http\Message\StreamFactoryInterface
     logger:         $psr3,                 // Psr\Log\LoggerInterface, defaults to NullLogger
-    mockTransport:  null,                  // DPay\Support\MockTransport — used when $config->mock = true
+);
+
+$client = new DPayClient(
+    config: $config,                       // DPayConfig
+    transport: $transport,                 // DPay\Http\Transport
+    mockTransport: null,                   // DPay\Support\MockTransport — used when $config->mock = true
 );
 ```
 
-Or use the convenience factory (requires `guzzlehttp/guzzle`):
+Or use the convenience factory (requires `guzzlehttp/guzzle`, builds the
+`Transport` for you):
 
 ```php
 DPayClientFactory::create($config);
