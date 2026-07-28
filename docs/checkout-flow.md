@@ -116,7 +116,7 @@ try {
 
 ```php
 // app/Http/Controllers/CheckoutController.php
-use DPay\Exceptions\DPayException;
+use DPay\Exceptions\DPayExceptionInterface;
 use DPay\Laravel\Facades\DPay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -133,11 +133,16 @@ public function initiate(Request $request)
     $order = Order::findOrFail($data['order_id']);
 
     try {
+        // DPay::provider() throws UnknownProviderException (extends
+        // InvalidArgumentException, NOT DPayException) for an unregistered
+        // or disabled code. Catch DPayExceptionInterface, not DPayException,
+        // so this one block covers both that and sendOtp()'s DPayException
+        // tree.
         $reference = DPay::provider($data['method'])->sendOtp(
             amount: $order->total_amount,
             fields: $data,
         );
-    } catch (DPayException $e) {
+    } catch (DPayExceptionInterface $e) {
         return back()->withErrors(['payment' => $e->getMessage()]);
     }
 
@@ -178,7 +183,12 @@ call `openSession()` directly to get the full response, or call
 `getSession($reference)` to retrieve it later:
 
 ```php
-$session = DPay::openSession('moamalat', $order->total_amount);
+use DPay\Dto\OpenSessionRequest;
+
+$session = DPay::openSession(new OpenSessionRequest(
+    payMethod: 'moamalat',
+    amount: $order->total_amount,
+));
 $paymentLink = $session->paymentLink;   // hand to the front-end
 // Persist $session->sessionId as the reference.
 ```
@@ -309,7 +319,13 @@ complete it.
 
 ```php
 // WRONG — this just opens a session
-$session = DPay::openSession('edfali', 50, '0911234567');
+use DPay\Dto\OpenSessionRequest;
+
+$session = DPay::openSession(new OpenSessionRequest(
+    payMethod: 'edfali',
+    amount: 50.0,
+    customerMobile: '0911234567',
+));
 $order->markPaid();   // ❌ user hasn't paid yet
 
 // RIGHT — wait for verification
