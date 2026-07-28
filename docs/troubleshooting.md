@@ -8,8 +8,7 @@ Every error the SDK can throw, what it means, what to check.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Amount must be a whole number for this payment provider.` | You passed `49.5` (or any non-integer). DPay only accepts integers in LYD. | Round at the caller — `(int) round($amount)`. |
-| `Amount is below the minimum of N.` | Amount < `min_amount` (default 5). | Either raise the amount or lower `min_amount` in config. |
+| `Amount is below the minimum of N.` | Amount < `min_amount` (default `0.01`). | Either raise the amount or lower `min_amount` in config. Decimal amounts (e.g. `49.5`) are accepted — there's no whole-number requirement. |
 | `pay_method is required` / `customer_mobile is required` / similar messages from DPay | Your provider's `sendOtp` produced a body DPay rejected — typically because the `$fields` you passed didn't match the provider's `requiredFields()` schema. | Run `$provider->requiredFields()` and make sure your input includes those keys. Check [docs/providers.md](providers.md). |
 | Sudden 422 on a previously-working integration | DPay changed their accepted `pay_method` strings. | Override via env, e.g. `DPAY_PAY_METHOD_EDFALI=edfali_v2`. No redeploy needed. |
 
@@ -33,12 +32,33 @@ Every error the SDK can throw, what it means, what to check.
 | `Failed to reach DPay: cURL error 6: Could not resolve host` | DNS failure / wrong `DPAY_BASE_URL`. | Verify URL; ping the host. |
 | `Failed to reach DPay: cURL error 28: Operation timed out` | DPay slow or unreachable. | Bump `DPAY_TIMEOUT`; never automatically retry — a half-completed openSession could leave a dangling session. |
 
+### `DPayRateLimitException` (429)
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `Too Many Attempts.` | You (or your test suite) fired requests faster than DPay's rate limit. The sandbox is aggressive — even 4–5 requests in quick succession can trip it. | Back off and retry later. Don't loop-retry immediately; space calls out (the sandbox probe uses 2.5–15s delays). |
+
 ### `UnknownProviderException`
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | `Payment provider [foo] is not supported.` | You called `DPay::provider('foo')` for a code you never registered. | Either register it (see [extending.md](extending.md)) or fix the typo. |
 | `Payment provider [foo] is disabled.` | Code exists in config but `enabled => false`. | Set `PAYMENT_GATEWAY_FOO_ENABLED=true`, or check why it's off. |
+
+### Webhook verification exceptions
+
+These come from `DPay\Webhooks\WebhookVerifier::verify()`, not from
+`DPayClient`. None of them ever include the expected signature or your
+webhook secret in `->getMessage()` — the request that triggers them is
+attacker-controlled, so nothing sensitive is echoed back.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `WebhookSignatureMismatchException` | Computed HMAC didn't match `X-DPAY-Signature`. | Confirm `DPAY_WEBHOOK_SECRET` matches Dashboard → Webhooks → Reveal Secret exactly. Also check nothing upstream (a proxy, middleware) is re-encoding the JSON body before your handler sees it — the signature is computed over the exact raw bytes DPay sent. |
+| `WebhookTimestampExpiredException` | `X-DPAY-Timestamp` is more than 5 minutes from "now," in either direction. | Check server clock drift (NTP). A future timestamp usually means clock skew, not a replay attack. |
+| Constructing `WebhookVerifier` throws `InvalidArgumentException` | Empty secret. `WebhookVerifier` refuses to construct with `''` rather than silently rejecting every webhook with a misleading signature-mismatch message. | Set `DPAY_WEBHOOK_SECRET`. In Laravel, this fails at **boot** time when `dpay.webhooks.enabled` is true, not on your first real webhook. |
+
+See [webhooks.md](webhooks.md) for full setup.
 
 ---
 
@@ -68,12 +88,17 @@ You skipped `php artisan vendor:publish --tag=dpay-logos`. The SVGs live in
 the package's `resources/logos/` and need to be copied to
 `public/vendor/dpay/`. Run that command on deploy.
 
-### "Where are Sadad / Yaser?"
+### "Where is Sadad / Why does it fail with 'Unsupported payment method'?"
 
-Not shipped. DPay's sandbox returns `500 "Unsupported payment method"`
-for both. When DPay enables them for your merchant, follow
-[extending.md § Scenario 2](extending.md#scenario-2--a-new-dpay-pay_method)
-to add them back — it's two short PHP classes plus a config entry.
+Sadad ships with the SDK (`SadadProvider`) but is **disabled by default**
+(`PAYMENT_GATEWAY_SADAD_ENABLED=false`) because it's merchant-gated on
+DPay's side — their sandbox rejects it with
+`"Unsupported payment method: sadad"` until DPay enables it for your
+merchant account. Confirm with DPay, then set
+`PAYMENT_GATEWAY_SADAD_ENABLED=true`. No code changes needed.
+
+**Yaser** isn't shipped and doesn't appear in the official DPay spec at all
+— there's nothing to enable.
 
 ### "Moamalat `verifyOtp` always returns `false` even though the user paid"
 
