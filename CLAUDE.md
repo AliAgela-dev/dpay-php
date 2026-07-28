@@ -17,49 +17,46 @@ shapes.
 
 **An official DPay API spec exists: https://dpay.ly/docs/api**, with a Postman
 collection at `https://dpay.ly/assets/dits-pgs-api.postman_collection.json`.
-Read it before changing anything that touches the wire format.
-
-This matters because the repo's own prose predates it. `README.md` still says the
-field names and endpoint paths *"have not been validated against an official DPay
-spec"*, and `SANDBOX-VALIDATION.md` speculates about features ("if DPay rolls out
-webhooks") that are in fact documented and live. Treat the published spec as
-authoritative, the sandbox probe log as corroborating evidence, and the repo's
-narrative docs as possibly stale.
+Read it before changing anything that touches the wire format. Treat the
+published spec as authoritative and the sandbox probe log
+(`SANDBOX-VALIDATION.md`) as corroborating live evidence.
 
 The core assumptions the SDK got **right**: base URL `https://dpay.ly/api`,
 `Authorization: Bearer <token>`, the three endpoint paths, the `pay_method` /
 `customer_mobile` / `card_number` request keys, and the `pending`/`paid` status
 strings.
 
-## Where the SDK diverges from the official spec
+## Spec alignment status
 
-These are live gaps, not style preferences. Verify against the spec before
-"fixing" surrounding code — several look intentional but contradict DPay.
+Plans 1–3 (v0.2.0 work) closed every gap below except per-gateway limits.
+This table was last cross-checked against `src/` on 2026-07-28 — verify
+against the spec yourself before assuming a row is still accurate.
 
-| Area | Official spec | This SDK |
+| Area | Official spec | Status |
 |---|---|---|
-| Amount | Decimals allowed (`10.50`), minimum `0.01` | Rejects any fractional amount; `min_amount` defaults to **5** |
-| Amount on the wire | `number` | `OpenSessionRequest::toBody()` casts `(int) $amount` — **truncates** |
-| `description` | Top-level request field (MobiCash) | Nested as `data.description` |
-| `data` | Free-form merchant metadata, echoed in webhooks | Only ever used to carry `description` |
-| Card numbers | 7 digits same-bank **or 9 digits cross-bank (OnePay)** | `PaymentField::cardNumber(digits: 7)` → a `digits:7` rule that rejects 9-digit cards |
-| Sadad | Supported; needs `customer_mobile` + `birth_year` (4 digits) + optional `category` (0–36) | Not shipped; `AbstractDPayProvider` cannot express those fields |
-| Webhooks | HMAC-signed, 5 endpoints, `payment.paid/failed/expired/refunded/voided` | `supportsWebhook: false` everywhere; no verification helper |
-| `Idempotency-Key` | Supported header on `sessions/open`; replays return the original session | Never sent |
-| Per-gateway limits | `GET /api/pay-methods` returns live `fee`, `min_deposit`, `max_deposit` per gateway | Single global `min_amount`; no max check; endpoint unimplemented |
+| Amount | Decimals allowed (`10.50`), minimum `0.01` | ✅ Resolved. `min_amount` is a float, defaults to `0.01` (`DPayConfig::$minAmount`). No whole-number check anywhere. |
+| Amount on the wire | `number` | ✅ Resolved. No cast; `OpenSessionRequest::$amount` stays `float` end-to-end. |
+| `description` | Top-level request field (MobiCash) | ✅ Resolved. `OpenSessionRequest::$description` is a top-level constructor param, independent of `$data`. |
+| `data` | Free-form merchant metadata, echoed in webhooks | ✅ Resolved. `OpenSessionRequest::$data` is its own `array` param, unrelated to `description`. |
+| Card numbers | 7 digits same-bank **or 9 digits cross-bank (OnePay)** | ✅ Resolved for bank gateways. `PaymentField::bankCardNumber()` (`digitsOneOf: [7, 9]`) is used by MasrefyPay/YousrPay/SaharaPay. MobiCash stays 7-only via `cardNumber(digits: 7)` — correct, MobiCash has no OnePay cross-bank path. |
+| Sadad | Supported; needs `customer_mobile` + `birth_year` (4 digits) + optional `category` (0–36) | ✅ Shipped as `SadadProvider`, disabled by default (merchant-gated on DPay's side, not code-gated). Needed **zero** `AbstractDPayProvider` changes — see Architecture below. |
+| Webhooks | HMAC-signed, 5 endpoints, `payment.paid/failed/expired/refunded/voided` | ✅ Resolved. `supportsWebhook()` returns `true` for every provider; `DPay\Webhooks\WebhookVerifier` (HMAC-SHA256 + 5-min replay window) and `WebhookEventFactory` (typed parsing for all 6 events, including `webhook.test`) ship in `src/Webhooks/`. See [docs/webhooks.md](docs/webhooks.md). |
+| `Idempotency-Key` | Supported header on `sessions/open`; replays return the original session | ✅ SDK-side resolved. `DPayClient::openSession()` takes an optional `$idempotencyKey` and sends the header. Live-confirmed the sandbox itself doesn't honor replay correctly yet — that's a sandbox-side gap, not an SDK bug. See `SANDBOX-VALIDATION.md`. |
+| Per-gateway limits | `GET /api/pay-methods` returns live `fee`, `min_deposit`, `max_deposit` per gateway | ⚠️ **Still open.** No `PayMethod` DTO, no `PayMethodsClient`. Single global `min_amount`, no max check. |
 
-The amount handling is the one to be careful with. The whole-number rule is an
-**SDK-imposed invariant inherited from health-portal, not a DPay requirement** —
-and the `(int)` cast in `toBody()` would silently truncate `10.50` → `10` if the
-pre-flight guard were ever relaxed. If you loosen the guard, fix the cast in the
-same change.
-
-Also unimplemented (spec'd, no SDK surface): `GET /api/auth/me`,
-`POST /api/auth/logout`, `GET /api/payments`, `POST /api/payments/filter`,
-`GET /api/pay-methods`, and all of `/api/invoices`. `VerifySessionResponse` maps
-only the flat legacy fields — the spec's nested `payment` object, `receipt_url`,
-`system_reference`, `network_reference`, `paid_through`, and `payer_account` are
-reachable only via `->raw`.
+A live sandbox check on 2026-07-28 found: `GET /api/sandbox/pay-methods`
+returns real per-gateway data today (200, all 9 gateways with
+`fee`/`min_deposit`/`max_deposit`/`enabled`) — building `PayMethodsClient`
+is unblocked. `/auth/me`, `/payments`, `/invoices` aren't deployed to
+sandbox yet (a branded 404 page, not a Laravel response — genuinely
+unrouted, not a permissions issue). `/payments/filter` is a partial
+exception: `POST` hits a real registered route (`405 Method Not Allowed`,
+naming the route explicitly) but `GET` to the identical URL falls through
+to the same branded 404 — looks like a routing-order bug on DPay's side,
+not something to work around here. `VerifySessionResponse` maps only the
+flat legacy fields — the spec's nested `payment` object, `receipt_url`,
+`system_reference`, `network_reference`, `paid_through`, and
+`payer_account` are reachable only via `->raw`.
 
 ## Commands
 
@@ -108,20 +105,26 @@ multi-method checkout.
 
 **The provider layer is schema-driven, and that's the central design idea.** Each
 provider declares a `PaymentField[]` schema via `defaultFields()`;
-`AbstractDPayProvider::sendOtp()` reads that schema to decide what to forward to
-`openSession()`. It recognizes exactly two field keys:
+`AbstractDPayProvider::sendOtp()` reads that schema and forwards every declared
+field under its `PaymentField::wireName()` (the `sendAs` override, defaulting to
+`key`) — `customer_mobile`, `card_number`, `birth_year`, `category`, and
+`description` are all recognized, because those are exactly the named
+parameters `OpenSessionRequest` accepts. There is deliberately no
+per-field special-casing in `sendOtp()` itself. Consequences:
 
-- `phone_number` → `customerMobile`
-- `card_number` → `cardNumber`
-
-There is deliberately no per-provider special-casing. Consequences:
-
-- Adding a DPay-backed gateway that uses phone or card = one subclass declaring
-  `code()`/`displayName()`/`logo()`/`defaultFields()`, plus a `config/dpay.php`
-  entry. Nothing else.
-- A gateway needing a *different* body field must not extend
-  `AbstractDPayProvider` — implement `PaymentProviderInterface` and call
-  `DPayClient` directly. See [docs/extending.md](docs/extending.md).
+- Adding a DPay-backed gateway whose fields map onto an existing
+  `OpenSessionRequest` parameter (phone, card, Sadad's birth-year/category) =
+  one subclass declaring `code()`/`displayName()`/`logo()`/`defaultFields()`,
+  plus a `config/dpay.php` entry. **Nothing else** — `SadadProvider` is the
+  proof: it added `birth_year` and `category` with zero
+  `AbstractDPayProvider` changes, because the base class was already
+  generic. (An earlier version of this file claimed Sadad-like fields
+  needed base-class changes — that was wrong even before Sadad shipped;
+  the generic mapping predates it.)
+- A gateway needing a wire field `OpenSessionRequest` has no parameter for
+  must not extend `AbstractDPayProvider` — implement `PaymentProviderInterface`
+  and call `DPayClient` directly, or add the field to `OpenSessionRequest`
+  first. See [docs/extending.md](docs/extending.md).
 
 The same `PaymentField` schema drives three consumers: `GatewayManager::describe()`
 (frontend JSON with regex/digits/en+ar labels), `PaymentFieldRules` (Laravel
@@ -149,26 +152,30 @@ health-portal behavior that host apps still depend on:
 - **`verifySession()` returns `null`, it does not throw**, for wrong OTP / expired
   / not-found. Provider `verifyOtp()` therefore returns `false` for ordinary user
   errors without callers needing try/catch. Do not "improve" this into an exception.
-- **Amounts are forced to whole numbers.** Fractional values raise
-  `DPayValidationException`; `min_amount` (default 5) is enforced the same way.
-  Both are *SDK* rules that contradict the published spec (see the divergence
-  table above) — they're load-bearing for existing health-portal callers, so
-  don't relax them casually, but don't cite them as DPay requirements either.
+- **Amounts allow decimals; only a configurable floor is enforced.**
+  `DPayClient` checks `$request->amount < $config->minAmount` before opening
+  a session (default `minAmount` is `0.01`, matching the spec's documented
+  minimum) and throws `DPayValidationException` if it's too low. There is
+  no whole-number check — that was an SDK-imposed invariant inherited from
+  health-portal and it contradicted the spec; Plan 1 removed it. Don't
+  reintroduce it.
 - **`UnknownProviderException` extends `InvalidArgumentException`, not
   `DPayException`.** A `catch (DPayException)` around a
   `provider($code)->sendOtp(...)` chain will *not* catch an unknown or disabled
-  code. The Laravel controller example in
-  [docs/checkout-flow.md](docs/checkout-flow.md) has exactly this hole.
+  code — catch `DPayExceptionInterface` instead, which both branches
+  implement. The Laravel controller example in
+  [docs/checkout-flow.md](docs/checkout-flow.md) now does this correctly.
 - **Mock mode short-circuits before validation.** In `openSession()`, the
-  `config->mock` branch returns before the whole-number and `min_amount` checks —
-  so mock mode accepts fractional and below-minimum amounts. Intentional today;
+  `config->mock` branch returns before the `min_amount` check — so mock
+  mode accepts amounts below the configured floor too. Intentional today;
   know it before writing tests that assume otherwise.
 - **The provider reference is a `string`**, even though DPay's `session_id` is an
   int. Keeps wallet-style providers returning UUIDs/hashes on the same contract.
 - **Unknown session statuses degrade to `SessionStatus::UNKNOWN`** rather than
   throwing, so a new gateway state doesn't crash callers.
-- HTTP status → exception mapping lives in one place, `DPayClient::buildException()`:
-  401/403 → `DPayAuthException`, 404 → `DPaySessionNotFoundException`, 429 →
+- HTTP status → exception mapping lives in one place, `Transport::buildException()`
+  (`src/Http/Transport.php`, extracted from `DPayClient` in Plan 1): 401/403 →
+  `DPayAuthException`, 404 → `DPaySessionNotFoundException`, 429 →
   `DPayRateLimitException`, other 4xx → `DPayValidationException`, else
   `DPayException`. All extend `DPayException`.
 
@@ -188,21 +195,25 @@ response queue, a recorded request log, and a `throwOnNext` hook for exercising
 
 ## Keeping docs in sync
 
-Provider or test changes ripple into more files than usual here, and several are
-currently drifting. When you add/remove a provider or change test counts, check:
-`README.md` (provider table, project layout, test counts), `composer.json`
-(`description` + `keywords` — these still list Sadad and Yaser, which are **not**
-shipped), `CHANGELOG.md`, `src/Laravel/config/dpay.php`, and the relevant file
-under `docs/`.
+Provider or test changes ripple into more files than usual here. When you
+add/remove a provider or change test counts, check: `README.md` (provider
+table, project layout, test counts), `composer.json` (`description` +
+`keywords`), `CHANGELOG.md`, `src/Laravel/config/dpay.php`, and every file
+under `docs/` — a 2026-07-28 audit found four `docs/*.md` files
+(dto-reference, troubleshooting, sandbox-testing, plus a partial miss in
+configuration) that had gone untouched since before Plan 1 despite `src/`
+changing in 77 files. Don't assume a doc is current just because it reads
+confidently.
 
-Sadad and Yaser were dropped after the sandbox returned
-`500 "Unsupported payment method"` for both — but read that conclusion carefully:
-**`sadad` is a documented, supported `pay_method`** in the official spec, with its
-own section. The probe most likely failed because it wasn't enabled on the
-merchant account *and* because the SDK never sent Sadad's required `birth_year`.
-Adding it back needs more than the `extending.md` recipe, since
-`AbstractDPayProvider` can only map `phone_number` and `card_number`. **Yaser**
-does not appear in the official spec at all; dropping it looks correct.
+**Sadad** is shipped (`SadadProvider`, `src/Providers/SadadProvider.php`),
+disabled by default via `PAYMENT_GATEWAY_SADAD_ENABLED=false` — it's
+merchant-gated on DPay's side (their sandbox returns
+`"Unsupported payment method: sadad"` until DPay enables it for this
+merchant), not missing SDK capability. It needed zero `AbstractDPayProvider`
+changes; see the Architecture section above. **Yaser** does not appear in
+the official spec at all and was correctly never added — if you see a
+stray "Yaser" reference anywhere outside `CHANGELOG.md`'s `[0.1.0]`
+historical section, it's a leftover that should be deleted.
 
 ## Logo path mismatch
 
