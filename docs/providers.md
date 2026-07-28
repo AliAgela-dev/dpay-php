@@ -26,7 +26,7 @@ which fields they read and (for Moamalat) how verification works.
 | `pay_method` (DPay) | `edfali` |
 | `requiresOtp` | true |
 | `supportsStatusCheck` | false |
-| `supportsRefund` / `supportsWebhook` | false / false |
+| `supportsRefund` / `supportsWebhook` | false / **true** |
 
 **`requiredFields()` default:**
 ```php
