@@ -13,7 +13,17 @@ final class DPayConfig
         public readonly string $apiKey = '',
         public readonly int $timeout = 15,
         public readonly bool $mock = false,
-        public readonly int $minAmount = 5,
+        /**
+         * Client-side pre-flight floor, in LYD. Defaults to DPay's documented
+         * minimum of 0.01.
+         *
+         * Set to 0 to disable the pre-flight check and let the gateway be the
+         * sole authority on validity — an invalid amount then costs one
+         * round-trip and comes back as a 422 rather than being rejected
+         * locally. Values between 0 and 0.01 are accepted for the same reason:
+         * this is the SDK's floor, not a mirror of DPay's.
+         */
+        public readonly float $minAmount = 0.01,
     ) {
         if ($timeout < 1) {
             throw new InvalidArgumentException('timeout must be >= 1 second.');
@@ -34,7 +44,7 @@ final class DPayConfig
             apiKey: (string) ($cfg['api_key'] ?? ''),
             timeout: (int) ($cfg['timeout'] ?? 15),
             mock: (bool) ($cfg['mock'] ?? false),
-            minAmount: (int) ($cfg['min_amount'] ?? 5),
+            minAmount: (float) ($cfg['min_amount'] ?? 0.01),
         );
     }
 }

@@ -77,4 +77,82 @@ final class PaymentFieldTest extends TestCase
         self::assertArrayHasKey('digits', $arr);
         self::assertNull($arr['digits']);
     }
+
+    public function test_wire_name_defaults_to_the_key(): void
+    {
+        self::assertSame('phone_number', (new PaymentField(key: 'phone_number'))->wireName());
+    }
+
+    public function test_send_as_overrides_the_wire_name(): void
+    {
+        $field = new PaymentField(key: 'phone_number', sendAs: 'customer_mobile');
+
+        self::assertSame('customer_mobile', $field->wireName());
+    }
+
+    public function test_bank_card_number_accepts_seven_or_nine_digits(): void
+    {
+        $field = PaymentField::bankCardNumber();
+
+        self::assertSame([7, 9], $field->digitsOneOf);
+        self::assertNull($field->digits);
+        self::assertSame('card_number', $field->wireName());
+    }
+
+    public function test_birth_year_is_a_four_digit_field_sent_as_birth_year(): void
+    {
+        $field = PaymentField::birthYear();
+
+        self::assertSame(4, $field->digits);
+        self::assertSame('birth_year', $field->wireName());
+    }
+
+    public function test_sadad_category_is_optional_and_integer(): void
+    {
+        $field = PaymentField::sadadCategory();
+
+        self::assertFalse($field->required);
+        self::assertSame('integer', $field->type);
+        self::assertSame('category', $field->wireName());
+    }
+
+    public function test_to_array_exposes_send_as_and_digits_one_of(): void
+    {
+        $array = PaymentField::bankCardNumber()->toArray();
+
+        self::assertSame([7, 9], $array['digits_one_of']);
+        self::assertSame('card_number', $array['send_as']);
+    }
+
+    public function test_from_array_round_trips_the_new_keys(): void
+    {
+        $field = PaymentField::fromArray(PaymentField::bankCardNumber()->toArray());
+
+        self::assertSame([7, 9], $field->digitsOneOf);
+        self::assertSame('card_number', $field->wireName());
+    }
+
+    public function test_setting_both_digits_and_digits_one_of_is_rejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new PaymentField(key: 'card_number', digits: 7, digitsOneOf: [9]);
+    }
+
+    public function test_from_array_casts_string_digit_values(): void
+    {
+        // Config and JSON deliver strings, not ints.
+        $field = PaymentField::fromArray(['key' => 'card_number', 'digits_one_of' => ['7', '9']]);
+
+        self::assertSame([7, 9], $field->digitsOneOf);
+    }
+
+    public function test_an_explicit_send_as_survives_a_round_trip(): void
+    {
+        // The existing round-trip test uses a field whose sendAs is null, so it
+        // cannot distinguish "override preserved" from "collapsed and redefaulted".
+        $original = new PaymentField(key: 'phone_number', sendAs: 'customer_mobile');
+
+        self::assertSame('customer_mobile', PaymentField::fromArray($original->toArray())->wireName());
+    }
 }

@@ -1,9 +1,9 @@
 {
     "name": "aliagela-dev/dpay-php",
-    "description": "Framework-agnostic PHP SDK for the DPay payment gateway (Libya) with provider abstractions for Edfali, MobiCash, Sadad, Yaser, SaharaPay, YousrPay, MasrefyPay, and Moamalat. Optional Laravel bridge included.",
+    "description": "Framework-agnostic PHP SDK for the DPay payment gateway (Libya) with provider abstractions for Edfali, MobiCash, Sadad, SaharaPay, YousrPay, MasrefyPay, and Moamalat. Optional Laravel bridge included.",
     "type": "library",
     "license": "proprietary",
-    "keywords": ["dpay", "payment", "libya", "edfali", "mobicash", "sadad", "yaser", "saharapay", "yousrpay", "masrefypay", "moamalat", "sdk"],
+    "keywords": ["dpay", "payment", "libya", "edfali", "mobicash", "sadad", "saharapay", "yousrpay", "masrefypay", "moamalat", "sdk"],
     "require": {
         "php": "^8.2",
         "psr/http-client": "^1.0",
@@ -13,9 +13,9 @@
     },
     "require-dev": {
         "guzzlehttp/guzzle": "^7.8",
-        "illuminate/contracts": "^10.0 || ^11.0",
+        "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
         "nyholm/psr7": "^1.8",
-        "orchestra/testbench": "^8.0 || ^9.0",
+        "orchestra/testbench": "^8.0 || ^9.0 || ^10.0",
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^10.5 || ^11.0"
     },

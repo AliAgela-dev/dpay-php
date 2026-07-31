@@ -4,14 +4,15 @@ One card per provider. For every gateway you'll find: the `pay_method`
 string DPay expects, the request body shape we send, what comes back, the
 default `requiredFields()` schema, and gotchas.
 
-All six DPay-backed providers share the same surface — `sendOtp(amount, $fields)
+All seven DPay-backed providers share the same surface — `sendOtp(amount, $fields)
 → reference` and `verifyOtp(reference, otp) → bool` — but they differ in
 which fields they read and (for Moamalat) how verification works.
 
-> **Sadad / Yaser are not in this build.** DPay's sandbox doesn't enable
-> them for our merchant (both return `500 "Unsupported payment method"`).
-> See [extending.md § Scenario 2](extending.md#scenario-2--a-new-dpay-pay_method)
-> for how to add them back when DPay turns them on.
+> **Sadad is disabled by default.** DPay's sandbox rejects it with
+> `"Unsupported payment method: sadad"` until the gateway is enabled on
+> your merchant account — confirm with DPay before flipping
+> `PAYMENT_GATEWAY_SADAD_ENABLED=true`. **Yaser** is not shipped — it
+> does not appear in the official DPay spec at all.
 
 ---
 
@@ -25,7 +26,7 @@ which fields they read and (for Moamalat) how verification works.
 | `pay_method` (DPay) | `edfali` |
 | `requiresOtp` | true |
 | `supportsStatusCheck` | false |
-| `supportsRefund` / `supportsWebhook` | false / false |
+| `supportsRefund` / `supportsWebhook` | false / **true** |
 
 **`requiredFields()` default:**
 ```php
@@ -41,6 +42,41 @@ which fields they read and (for Moamalat) how verification works.
 ```
 
 **Successful verify** returns `{ status: "paid", tx_id: "...", payment_id: ... }`.
+
+---
+
+## Sadad
+
+| | |
+|---|---|
+| Class | `DPay\Providers\SadadProvider` |
+| `code` | `sadad` |
+| `pay_method` | `sadad` |
+| `requiresOtp` | true |
+| `supportsStatusCheck` | false |
+
+REST mobile wallet (Almadar Aljadid). 6-digit OTP, 10-minute validity.
+Requires `customer_mobile` **and** `birth_year` (4 digits, cross-checked
+against the wallet registration record) — the only DPay gateway with this
+requirement.
+
+**`requiredFields()` default:**
+```php
+[
+  PaymentField::phoneNumber(),
+  PaymentField::birthYear(),
+  PaymentField::sadadCategory(),   // optional, 0-36, omit for merchant default
+]
+```
+
+**Request body to DPay** (POST `/payment/sessions/open`):
+```json
+{ "pay_method": "sadad", "amount": 100, "customer_mobile": "0912345678", "birth_year": "1994", "category": 20 }
+```
+
+> **Disabled by default.** Set `PAYMENT_GATEWAY_SADAD_ENABLED=true` only
+> after confirming with DPay that Sadad is enabled on your merchant
+> account — otherwise every session open fails server-side.
 
 ---
 
@@ -169,10 +205,17 @@ No `customer_mobile`, no `card_number`. The user pays via the
 | `saharapay`  | `card_number` (`digits:7`)           | `card_number`     |
 | `yousrpay`   | `card_number` (`digits:7`)           | `card_number`     |
 | `masrefypay` | `card_number` (`digits:7`)           | `card_number`     |
+| `sadad`      | `phone_number`, `birth_year`, `category` (optional) | `customer_mobile`, `birth_year`, `category` |
 | `moamalat`   | _(empty)_                            | _(none)_          |
 
-Mapping rule (in `AbstractDPayProvider::sendOtp`): a field whose `key`
-is `phone_number` becomes `customer_mobile` in the DPay body; a field
-whose `key` is `card_number` becomes `card_number`. Any other key is
-**ignored** when forming the body (collect it client-side if you want, but
-it won't reach DPay unless you write a custom provider).
+Mapping rule (in `AbstractDPayProvider::sendOtp`): each declared field is
+forwarded under its `PaymentField::wireName()` (the `sendAs` override,
+defaulting to `key`) — but only if that wire name is one
+`OpenSessionRequest` knows about: `customer_mobile`, `card_number`,
+`birth_year`, `category`, or `description`. That's how `phone_number` →
+`customer_mobile`, `card_number` → `card_number`, and Sadad's `birth_year`
+/ `category` all reach DPay with zero base-class changes. A field whose
+wire name isn't in that set is **silently dropped** — collect it
+client-side if you want, but it won't reach DPay unless you add the field
+to `OpenSessionRequest` or write a custom provider that calls
+`DPayClient` directly.

@@ -30,6 +30,6 @@ final class EdfaliProvider extends AbstractDPayProvider
 
     protected function defaultFields(): array
     {
-        return [PaymentField::phoneNumber()];
+        return [PaymentField::phoneNumber(sendAs: 'customer_mobile')];
     }
 }

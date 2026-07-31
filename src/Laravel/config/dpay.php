@@ -6,6 +6,7 @@ use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MasrefyPayProvider;
 use DPay\Providers\MoamalatProvider;
 use DPay\Providers\MobiCashProvider;
+use DPay\Providers\SadadProvider;
 use DPay\Providers\SaharaPayProvider;
 use DPay\Providers\YousrPayProvider;
 
@@ -19,7 +20,7 @@ return [
     'api_key' => env('DPAY_API_KEY', ''),
     'timeout' => (int) env('DPAY_TIMEOUT', 15),
     'mock' => (bool) env('DPAY_MOCK', true),
-    'min_amount' => (int) env('DPAY_MIN_AMOUNT', 5),
+    'min_amount' => (float) env('DPAY_MIN_AMOUNT', 0.01),
 
     /*
     |--------------------------------------------------------------------------
@@ -64,10 +65,37 @@ return [
             'provider' => SaharaPayProvider::class,
             'pay_method' => env('DPAY_PAY_METHOD_SAHARAPAY', 'saharapay'),
         ],
+        'sadad' => [
+            'enabled' => (bool) env('PAYMENT_GATEWAY_SADAD_ENABLED', false),
+            'provider' => SadadProvider::class,
+            'pay_method' => env('DPAY_PAY_METHOD_SADAD', 'sadad'),
+        ],
         'moamalat' => [
             'enabled' => (bool) env('PAYMENT_GATEWAY_MOAMALAT_ENABLED', false),
             'provider' => MoamalatProvider::class,
             'pay_method' => env('DPAY_PAY_METHOD_MOAMALAT', 'moamalat'),
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Webhooks
+    |--------------------------------------------------------------------------
+    |
+    | Off by default — a payment SDK should not silently claim a public POST
+    | route on install. Set DPAY_WEBHOOKS_ENABLED=true only after creating a
+    | signing secret at Dashboard -> Webhooks and pointing DPay at this
+    | route. See docs/webhooks.md.
+    |
+    */
+    'webhooks' => [
+        'enabled' => (bool) env('DPAY_WEBHOOKS_ENABLED', false),
+        'route' => env('DPAY_WEBHOOK_ROUTE', '/webhooks/dpay'),
+        'secret' => env('DPAY_WEBHOOK_SECRET', ''),
+        // Applied to the webhook route. Empty by default — add e.g.
+        // ['throttle:60,1'] here if you want rate limiting. Not env-driven
+        // since middleware specs don't serialize cleanly to a single env
+        // var; edit the published config file directly.
+        'middleware' => [],
     ],
 ];

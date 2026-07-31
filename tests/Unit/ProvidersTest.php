@@ -6,6 +6,7 @@ namespace DPay\Tests\Unit;
 
 use DPay\Client\DPayClient;
 use DPay\Config\DPayConfig;
+use DPay\Http\Transport;
 use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MasrefyPayProvider;
 use DPay\Providers\MoamalatProvider;
@@ -22,11 +23,11 @@ final class ProvidersTest extends TestCase
     {
         $f = new Psr17Factory();
 
+        $config = new DPayConfig(baseUrl: 'https://dpay.example/api', apiKey: 'k');
+
         return new DPayClient(
-            config: new DPayConfig(baseUrl: 'https://dpay.example/api', apiKey: 'k'),
-            httpClient: $http,
-            requestFactory: $f,
-            streamFactory: $f,
+            config: $config,
+            transport: new Transport($config, $http, $f, $f),
         );
     }
 
@@ -167,5 +168,44 @@ final class ProvidersTest extends TestCase
         $http = new FakeHttpClient();
         $provider = new EdfaliProvider($this->client($http), 'edfali', enabled: false);
         self::assertFalse($provider->isEnabled());
+    }
+
+    /**
+     * @return iterable<string, array{class-string, list<int>|null, int|null}>
+     */
+    public static function cardRules(): iterable
+    {
+        yield 'masrefypay' => [\DPay\Providers\MasrefyPayProvider::class, [7, 9], null];
+        yield 'yousrpay' => [\DPay\Providers\YousrPayProvider::class, [7, 9], null];
+        yield 'saharapay' => [\DPay\Providers\SaharaPayProvider::class, [7, 9], null];
+        yield 'mobicash' => [\DPay\Providers\MobiCashProvider::class, null, 7];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('cardRules')]
+    public function test_card_digit_rules_match_the_spec(string $class, ?array $oneOf, ?int $exact): void
+    {
+        $provider = new $class($this->createMock(\DPay\Client\DPayClientInterface::class), 'x');
+        $field = $provider->requiredFields()[0];
+
+        self::assertSame($oneOf, $field->digitsOneOf);
+        self::assertSame($exact, $field->digits);
+    }
+
+    public function test_all_providers_support_webhooks(): void
+    {
+        $provider = new \DPay\Providers\EdfaliProvider(
+            $this->createMock(\DPay\Client\DPayClientInterface::class),
+            'edfali',
+        );
+
+        self::assertTrue($provider->supportsWebhook());
+    }
+
+    public function test_only_moamalat_supports_refunds(): void
+    {
+        $client = $this->createMock(\DPay\Client\DPayClientInterface::class);
+
+        self::assertTrue((new \DPay\Providers\MoamalatProvider($client))->supportsRefund());
+        self::assertFalse((new \DPay\Providers\EdfaliProvider($client, 'edfali'))->supportsRefund());
     }
 }

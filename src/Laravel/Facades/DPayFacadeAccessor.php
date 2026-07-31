@@ -30,9 +30,9 @@ class DPayFacadeAccessor
         ));
     }
 
-    public function openSession(string $payMethod, float $amount, ?string $customerMobile = null, ?string $cardNumber = null, ?string $description = null): \DPay\Dto\OpenSessionResponse
+    public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
     {
-        return $this->client->openSession($payMethod, $amount, $customerMobile, $cardNumber, $description);
+        return $this->client->openSession($request, $idempotencyKey);
     }
 
     public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse

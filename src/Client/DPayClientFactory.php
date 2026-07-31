@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DPay\Client;
 
 use DPay\Config\DPayConfig;
+use DPay\Http\Transport;
 use DPay\Support\MockTransport;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -39,10 +40,13 @@ final class DPayClientFactory
 
         return new DPayClient(
             config: $config,
-            httpClient: $httpClient,
-            requestFactory: $requestFactory,
-            streamFactory: $streamFactory,
-            logger: $logger ?? new \Psr\Log\NullLogger(),
+            transport: new Transport(
+                config: $config,
+                httpClient: $httpClient,
+                requestFactory: $requestFactory,
+                streamFactory: $streamFactory,
+                logger: $logger ?? new \Psr\Log\NullLogger(),
+            ),
             mockTransport: $mockTransport,
         );
     }

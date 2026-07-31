@@ -7,7 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+## [0.2.0] — 2026-07-31
+
+### Added
+- `DPay\Providers\SadadProvider` — REST mobile wallet (Almadar Aljadid),
+  needs `customer_mobile` + `birth_year` + optional `category`. Ships
+  disabled by default; the gateway is merchant-gated on DPay's side.
+- `DPay\Webhooks\WebhookVerifier` — HMAC-SHA256 signature verification with
+  a 5-minute replay window.
+- `DPay\Webhooks\WebhookEventFactory` — typed parsing for all 6 webhook
+  events (`PaymentEvent` for the 5 payment.* events, `TestEvent` for
+  webhook.test's distinct shape).
+- Laravel bridge: opt-in webhook receiver route (`dpay.webhooks.enabled`,
+  off by default), `DPayWebhookReceived` event, and a `dpay.webhooks.middleware`
+  config key for applying rate limiting or other middleware to the route.
+
+### Changed
+- `AbstractDPayProvider::sendOtp()` maps every declared field by its wire
+  name (`PaymentField::wireName()`), not a hardcoded `phone_number`/
+  `card_number` check — this is what makes SadadProvider possible with no
+  base-class changes.
+- `min_amount` now a float defaulting to `0.01` (was `int`, default `5`).
+- `OpenSessionRequest` no longer truncates fractional amounts; `description`
+  moves to a top-level request field instead of `data.description`.
+- Bank-card gateways (MasrefyPay/YousrPay/SaharaPay) accept 7-digit
+  same-bank **or** 9-digit cross-bank (OnePay) cards. MobiCash stays 7-only.
+- `openSession()` takes an `OpenSessionRequest` DTO and an optional
+  `Idempotency-Key` instead of positional scalar arguments. **Breaking.**
+- `DPayClient`'s constructor now takes a `DPay\Http\Transport` instead of
+  PSR-18/17 clients and a logger directly — those moved onto `Transport`,
+  which owns HTTP plumbing so `DPayClient` only owns endpoint semantics.
+  **Breaking** for anyone constructing `DPayClient` directly (not via
+  `DPayClientFactory`, which absorbs the change).
+- `supportsWebhook()` now returns `true` for every provider (was `false`
+  everywhere) — webhooks are configured account-wide on DPay's side, not
+  per-gateway. `MoamalatProvider::supportsRefund()` now returns `true`
+  (refunds/voids are dashboard-triggered and observed via webhooks, not
+  SDK-invokable, but DPay does support them for Moamalat). Both flip the
+  JSON shape of `GatewayManager::describe()`.
+
+### Fixed
+- `SessionStatus` gains `VOIDED`.
+- `UnknownProviderException` now also implements `DPayExceptionInterface`,
+  so a single `catch` can cover both SDK exception trees.
+- **`composer install` on a fresh clone was unresolvable.** `composer.lock`
+  is gitignored (library convention), so CI and new contributors resolve
+  from scratch — and every Laravel 10.x/11.x release now carries a security
+  advisory, which Composer blocks by default. `orchestra/testbench` was
+  capped at `^9.0`, which cannot reach Laravel 12, so there was no
+  installable set. Widened the dev constraints to `testbench ^10.0` /
+  `illuminate/contracts ^12.0`. Dev-only — no runtime dependency changed.
 
 ## [0.1.0] — 2026-05-22
 
@@ -119,5 +168,6 @@ for the full report.
 - **Sandbox `tx_id` is `sb_txn_<hex>`.** Production format may differ;
   the SDK doesn't parse it, so no impact expected.
 
-[unreleased]: https://github.com/AliAgela-dev/dpay-php/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/AliAgela-dev/dpay-php/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AliAgela-dev/dpay-php/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/AliAgela-dev/dpay-php/releases/tag/v0.1.0

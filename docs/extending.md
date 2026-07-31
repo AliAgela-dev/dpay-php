@@ -116,6 +116,12 @@ If Hatif uses status-poll instead of OTP, override
 like `MoamalatProvider` does — but in most cases extending
 `AbstractDPayProvider` and just declaring `defaultFields()` is enough.
 
+> **Sadad is a real, shipped example of this** — see
+> `src/Providers/SadadProvider.php`. It needs `birth_year` and `category`
+> alongside `phone_number`; no base-class changes were needed, because
+> `AbstractDPayProvider::sendOtp()` maps every declared field by its
+> `PaymentField::wireName()`, not a hardcoded key list.
+
 ---
 
 ## Scenario 3 — same DPay provider, different field schema per tenant
@@ -155,8 +161,12 @@ new EdfaliProvider($client, 'edfali', requiredFields: [
 - **The reference being a string.** DPay's session_id is numeric, but the
   SDK stringifies it deliberately so wallet-style providers (which return
   UUIDs or hashes) work the same way.
-- **The body-field mapping in `AbstractDPayProvider`.** If you need a
-  totally new field name to reach DPay (not `customer_mobile` or
-  `card_number`), don't extend `AbstractDPayProvider` — talk to
-  `DPayClient` directly in your provider's `sendOtp`, e.g. for an
-  imagined `national_id` field.
+- **The body-field mapping in `AbstractDPayProvider`.** Each declared
+  field is forwarded under its `PaymentField::wireName()`, but only if
+  that wire name is one `OpenSessionRequest` recognizes: `customer_mobile`,
+  `card_number`, `birth_year`, `category`, or `description` (that set is
+  what makes Sadad's `birth_year`/`category` possible with no base-class
+  changes — see the Sadad callout above). If you need a totally new field
+  name to reach DPay that isn't in that set, don't extend
+  `AbstractDPayProvider` — talk to `DPayClient` directly in your
+  provider's `sendOtp`, e.g. for an imagined `national_id` field.

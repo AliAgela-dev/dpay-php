@@ -6,6 +6,7 @@ namespace DPay\Providers;
 
 use DPay\Client\DPayClientInterface;
 use DPay\Contracts\PaymentProviderInterface;
+use DPay\Dto\OpenSessionRequest;
 use DPay\Dto\PaymentField;
 
 /**
@@ -65,9 +66,14 @@ final class MoamalatProvider implements PaymentProviderInterface
         return false;
     }
 
+    /**
+     * Moamalat transactions can be refunded and voided, but DPay exposes no
+     * REST endpoint to initiate either — they are triggered from the dashboard
+     * and observed via the payment.refunded / payment.voided webhooks.
+     */
     public function supportsRefund(): bool
     {
-        return false;
+        return true;
     }
 
     public function supportsStatusCheck(): bool
@@ -77,7 +83,7 @@ final class MoamalatProvider implements PaymentProviderInterface
 
     public function supportsWebhook(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -95,10 +101,10 @@ final class MoamalatProvider implements PaymentProviderInterface
      */
     public function sendOtp(float $amount, array $fields): string
     {
-        $session = $this->client->openSession(
+        $session = $this->client->openSession(new OpenSessionRequest(
             payMethod: $this->payMethod,
             amount: $amount,
-        );
+        ));
 
         return (string) $session->sessionId;
     }

@@ -7,6 +7,7 @@ namespace DPay\Tests\Unit;
 use DPay\Client\DPayClient;
 use DPay\Config\DPayConfig;
 use DPay\Dto\PaymentField;
+use DPay\Http\Transport;
 use DPay\Providers\EdfaliProvider;
 use DPay\Providers\MasrefyPayProvider;
 use DPay\Providers\MoamalatProvider;
@@ -22,12 +23,11 @@ final class ProviderFieldsTest extends TestCase
     private function client(): DPayClient
     {
         $f = new Psr17Factory();
+        $config = new DPayConfig();
 
         return new DPayClient(
-            config: new DPayConfig(),
-            httpClient: new FakeHttpClient(),
-            requestFactory: $f,
-            streamFactory: $f,
+            config: $config,
+            transport: new Transport($config, new FakeHttpClient(), $f, $f),
         );
     }
 
@@ -41,10 +41,20 @@ final class ProviderFieldsTest extends TestCase
         self::assertSame('/^09\d{8}$/', $fields[0]->regex);
     }
 
-    public function test_card_otp_providers_default_to_7_digit_card_field(): void
+    public function test_mobicash_defaults_to_7_digit_card_field(): void
+    {
+        $provider = new MobiCashProvider($this->client(), 'x');
+        $fields = $provider->requiredFields();
+
+        self::assertCount(1, $fields);
+        self::assertSame('card_number', $fields[0]->key);
+        self::assertSame(7, $fields[0]->digits);
+        self::assertNull($fields[0]->digitsOneOf);
+    }
+
+    public function test_bank_providers_default_to_7_or_9_digit_card_field(): void
     {
         foreach ([
-            MobiCashProvider::class,
             SaharaPayProvider::class,
             YousrPayProvider::class,
             MasrefyPayProvider::class,
@@ -54,7 +64,8 @@ final class ProviderFieldsTest extends TestCase
 
             self::assertCount(1, $fields, $cls);
             self::assertSame('card_number', $fields[0]->key, $cls);
-            self::assertSame(7, $fields[0]->digits, $cls);
+            self::assertNull($fields[0]->digits, $cls);
+            self::assertSame([7, 9], $fields[0]->digitsOneOf, $cls);
         }
     }
 
@@ -81,7 +92,8 @@ final class ProviderFieldsTest extends TestCase
             'fee' => 0, 'fee_amount' => 0, 'total' => 50, 'pay_method' => 'x', 'expired_at' => '', 'data' => null,
         ]);
         $f = new Psr17Factory();
-        $c = new DPayClient(config: new DPayConfig(), httpClient: $http, requestFactory: $f, streamFactory: $f);
+        $config = new DPayConfig();
+        $c = new DPayClient($config, new Transport($config, $http, $f, $f));
 
         $edfali = new EdfaliProvider($c, 'edfali');
         $edfali->sendOtp(50, ['phone_number' => '0911234567', 'card_number' => '4242']);
@@ -96,12 +108,81 @@ final class ProviderFieldsTest extends TestCase
             'session_id' => 2, 'status' => 'pending', 'amount' => 50, 'currency' => 'LYD',
             'fee' => 0, 'fee_amount' => 0, 'total' => 50, 'pay_method' => 'x', 'expired_at' => '', 'data' => null,
         ]);
-        $c2 = new DPayClient(config: new DPayConfig(), httpClient: $http2, requestFactory: $f, streamFactory: $f);
+        $config2 = new DPayConfig();
+        $c2 = new DPayClient($config2, new Transport($config2, $http2, $f, $f));
         $mobicash = new MobiCashProvider($c2, 'mobicash');
         $mobicash->sendOtp(50, ['phone_number' => '0911234567', 'card_number' => '1234567']);
 
         $body2 = json_decode((string) $http2->lastRequest()->getBody(), true);
         self::assertSame('1234567', $body2['card_number']);
         self::assertArrayNotHasKey('customer_mobile', $body2);
+    }
+
+    public function test_fields_reach_the_wire_under_their_send_as_name(): void
+    {
+        $client = new class implements \DPay\Client\DPayClientInterface {
+            public ?\DPay\Dto\OpenSessionRequest $seen = null;
+
+            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
+            {
+                $this->seen = $request;
+
+                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
+            }
+
+            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
+            {
+                return null;
+            }
+
+            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
+            {
+                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
+            }
+        };
+
+        $provider = new \DPay\Providers\EdfaliProvider($client, 'edfali');
+        $provider->sendOtp(50, ['phone_number' => '0912345678']);
+
+        self::assertSame('0912345678', $client->seen?->customerMobile);
+    }
+
+    public function test_a_field_with_a_mismatched_key_and_send_as_still_reaches_the_right_wire_name(): void
+    {
+        // Deliberately proves routing is driven by wireName(), not by a
+        // hardcoded key check. Under the old hardcoded implementation this
+        // field would never reach customerMobile, because its key isn't
+        // literally 'phone_number' — only sendAs says where it belongs.
+        $client = new class implements \DPay\Client\DPayClientInterface {
+            public ?\DPay\Dto\OpenSessionRequest $seen = null;
+
+            public function openSession(\DPay\Dto\OpenSessionRequest $request, ?string $idempotencyKey = null): \DPay\Dto\OpenSessionResponse
+            {
+                $this->seen = $request;
+
+                return \DPay\Dto\OpenSessionResponse::fromArray(['session_id' => 1, 'status' => 'pending']);
+            }
+
+            public function verifySession(int $sessionId, string $otp): ?\DPay\Dto\VerifySessionResponse
+            {
+                return null;
+            }
+
+            public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
+            {
+                return \DPay\Dto\GetSessionResponse::fromArray(['session_id' => $sessionId, 'status' => 'paid']);
+            }
+        };
+
+        $provider = new \DPay\Providers\EdfaliProvider(
+            $client,
+            'edfali',
+            true,
+            [new \DPay\Dto\PaymentField(key: 'mobile', sendAs: 'customer_mobile')],
+        );
+
+        $provider->sendOtp(50, ['mobile' => '0912345678']);
+
+        self::assertSame('0912345678', $client->seen?->customerMobile);
     }
 }

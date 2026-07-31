@@ -71,6 +71,15 @@ class PaymentFieldRules
             $rules[] = "digits:{$field->digits}";
         }
 
+        if ($field->digitsOneOf !== null && $field->digitsOneOf !== []) {
+            $alternatives = implode(
+                '|',
+                array_map(static fn (int $d): string => '\d{'.$d.'}', $field->digitsOneOf),
+            );
+
+            $rules[] = 'regex:/^('.$alternatives.')$/';
+        }
+
         if ($field->regex !== null) {
             $rules[] = 'regex:'.$field->regex;
         }

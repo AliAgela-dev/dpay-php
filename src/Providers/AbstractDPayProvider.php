@@ -6,6 +6,7 @@ namespace DPay\Providers;
 
 use DPay\Client\DPayClientInterface;
 use DPay\Contracts\PaymentProviderInterface;
+use DPay\Dto\OpenSessionRequest;
 use DPay\Dto\PaymentField;
 
 /**
@@ -15,10 +16,9 @@ use DPay\Dto\PaymentField;
  *   - static identity (code, displayName, logo)
  *   - default field schema via defaultFields()
  *
- * sendOtp() reads the field schema to decide what to forward to DPay:
- *   - a 'phone_number' field      -> openSession(..., customerMobile: ...)
- *   - a 'card_number' field       -> openSession(..., cardNumber: ...)
- * No special-casing per provider; everything is data-driven.
+ * sendOtp() maps each declared field to its wire name via
+ * PaymentField::wireName() (i.e. sendAs, defaulting to the key), so adding a
+ * gateway field is a schema change rather than a base-class change.
  */
 abstract class AbstractDPayProvider implements PaymentProviderInterface
 {
@@ -66,7 +66,8 @@ abstract class AbstractDPayProvider implements PaymentProviderInterface
 
     public function supportsWebhook(): bool
     {
-        return false;
+        // See PaymentProviderInterface::supportsWebhook() for what this flag means.
+        return true;
     }
 
     /**
@@ -79,28 +80,27 @@ abstract class AbstractDPayProvider implements PaymentProviderInterface
 
     public function sendOtp(float $amount, array $fields): string
     {
-        $phoneNumber = null;
-        $cardNumber = null;
+        $wire = [];
 
         foreach ($this->fields as $field) {
-            $value = isset($fields[$field->key]) ? (string) $fields[$field->key] : null;
-            if ($value === '') {
-                $value = null;
+            $value = $fields[$field->key] ?? null;
+
+            if ($value === null || $value === '') {
+                continue;
             }
 
-            if ($field->key === 'phone_number') {
-                $phoneNumber = $value;
-            } elseif ($field->key === 'card_number') {
-                $cardNumber = $value;
-            }
+            $wire[$field->wireName()] = $field->type === 'integer' ? (int) $value : (string) $value;
         }
 
-        $session = $this->client->openSession(
+        $session = $this->client->openSession(new OpenSessionRequest(
             payMethod: $this->payMethod,
             amount: $amount,
-            customerMobile: $phoneNumber,
-            cardNumber: $cardNumber,
-        );
+            customerMobile: isset($wire['customer_mobile']) ? (string) $wire['customer_mobile'] : null,
+            cardNumber: isset($wire['card_number']) ? (string) $wire['card_number'] : null,
+            birthYear: isset($wire['birth_year']) ? (string) $wire['birth_year'] : null,
+            category: isset($wire['category']) ? (int) $wire['category'] : null,
+            description: isset($wire['description']) ? (string) $wire['description'] : null,
+        ));
 
         return (string) $session->sessionId;
     }

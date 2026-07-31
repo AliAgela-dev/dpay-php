@@ -116,7 +116,7 @@ try {
 
 ```php
 // app/Http/Controllers/CheckoutController.php
-use DPay\Exceptions\DPayException;
+use DPay\Exceptions\DPayExceptionInterface;
 use DPay\Laravel\Facades\DPay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -133,11 +133,16 @@ public function initiate(Request $request)
     $order = Order::findOrFail($data['order_id']);
 
     try {
+        // DPay::provider() throws UnknownProviderException (extends
+        // InvalidArgumentException, NOT DPayException) for an unregistered
+        // or disabled code. Catch DPayExceptionInterface, not DPayException,
+        // so this one block covers both that and sendOtp()'s DPayException
+        // tree.
         $reference = DPay::provider($data['method'])->sendOtp(
             amount: $order->total_amount,
             fields: $data,
         );
-    } catch (DPayException $e) {
+    } catch (DPayExceptionInterface $e) {
         return back()->withErrors(['payment' => $e->getMessage()]);
     }
 
@@ -162,6 +167,7 @@ public function initiate(Request $request)
 |---|---|
 | `edfali` | `phone_number` |
 | `mobicash`, `saharapay`, `yousrpay`, `masrefypay` | `card_number` |
+| `sadad` | `phone_number`, `birth_year`, `category` (optional) |
 | `moamalat` | _(none — the user pays via redirect/Lightbox)_ |
 
 ---
@@ -177,7 +183,12 @@ call `openSession()` directly to get the full response, or call
 `getSession($reference)` to retrieve it later:
 
 ```php
-$session = DPay::openSession('moamalat', $order->total_amount);
+use DPay\Dto\OpenSessionRequest;
+
+$session = DPay::openSession(new OpenSessionRequest(
+    payMethod: 'moamalat',
+    amount: $order->total_amount,
+));
 $paymentLink = $session->paymentLink;   // hand to the front-end
 // Persist $session->sessionId as the reference.
 ```
@@ -278,14 +289,19 @@ match ($session->status) {
 Wrap that in a queued job that re-runs every 30s for up to 15 minutes, then
 gives up.
 
+> **Prefer webhooks over polling where you can.** The polling approach
+> above still works, but `payment.paid`/`payment.expired`/etc. webhooks
+> now exist and update the same instant DPay knows the answer, without a
+> queued job hammering `getSession()`. See [docs/webhooks.md](webhooks.md).
+
 ---
 
 ## Edge cases
 
 | What happens | Where it surfaces |
 |---|---|
-| Amount has a decimal (e.g. `49.5`) | `sendOtp` throws `DPayValidationException` immediately. DPay only accepts integers. |
-| Amount below `min_amount` (default 5) | Same — `DPayValidationException` before any HTTP call. |
+| Amount below `min_amount` (default `0.01`) | `sendOtp` throws `DPayValidationException` before any HTTP call. |
+| Amount has many decimal places (e.g. `49.999`) | Sent to DPay as-is — the SDK does not round or reject it. DPay's own validation applies server-side. |
 | User enters wrong OTP | `verifyOtp` returns `false`. The session is still alive — they can retry until it expires. |
 | Session expired | `verifyOtp` returns `false`. The reference is dead; start over with a new `sendOtp`. |
 | DPay returns 401 (bad API key) | `DPayAuthException`. Not user-facing — fix your env. |
@@ -303,7 +319,13 @@ complete it.
 
 ```php
 // WRONG — this just opens a session
-$session = DPay::openSession('edfali', 50, '0911234567');
+use DPay\Dto\OpenSessionRequest;
+
+$session = DPay::openSession(new OpenSessionRequest(
+    payMethod: 'edfali',
+    amount: 50.0,
+    customerMobile: '0911234567',
+));
 $order->markPaid();   // ❌ user hasn't paid yet
 
 // RIGHT — wait for verification
