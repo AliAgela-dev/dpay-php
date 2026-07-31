@@ -50,6 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SessionStatus` gains `VOIDED`.
 - `UnknownProviderException` now also implements `DPayExceptionInterface`,
   so a single `catch` can cover both SDK exception trees.
+- **`composer install` on a fresh clone was unresolvable.** `composer.lock`
+  is gitignored (library convention), so CI and new contributors resolve
+  from scratch — and every Laravel 10.x/11.x release now carries a security
+  advisory, which Composer blocks by default. `orchestra/testbench` was
+  capped at `^9.0`, which cannot reach Laravel 12, so there was no
+  installable set. Widened the dev constraints to `testbench ^10.0` /
+  `illuminate/contracts ^12.0`. Dev-only — no runtime dependency changed.
 
 ## [0.1.0] — 2026-05-22
 
