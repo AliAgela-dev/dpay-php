@@ -1,12 +1,15 @@
 # Upgrading
 
-## From 0.1.0 (unreleased changes on this branch)
+## 0.1.0 → 0.2.0
 
-These changes are on `feat/dpay-spec-alignment-v0.2.0`, not yet tagged as a
-release. This guide will move under a `## [0.2.0]` heading once that
-happens — written now so nothing has to be reconstructed later. See
-`CHANGELOG.md` for the full list; this covers only what requires you to
-change calling code.
+`0.2.0` is a breaking release. See [CHANGELOG.md](CHANGELOG.md) for the
+complete list of changes; this guide covers only what requires you to change
+calling code.
+
+If you only use `GatewayManager` / the `DPay` facade's
+`provider($code)->sendOtp()` path, the one section that affects you is
+"`minAmount` is now a `float`, and its default changed" — everything else is
+either additive or below your abstraction level.
 
 ### `openSession()` no longer takes positional scalar arguments
 
