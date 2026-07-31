@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-31
+
 ### Added
 - `DPay\Providers\SadadProvider` — REST mobile wallet (Almadar Aljadid),
   needs `customer_mobile` + `birth_year` + optional `category`. Ships
@@ -159,5 +161,6 @@ for the full report.
 - **Sandbox `tx_id` is `sb_txn_<hex>`.** Production format may differ;
   the SDK doesn't parse it, so no impact expected.
 
-[unreleased]: https://github.com/AliAgela-dev/dpay-php/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/AliAgela-dev/dpay-php/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AliAgela-dev/dpay-php/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/AliAgela-dev/dpay-php/releases/tag/v0.1.0
