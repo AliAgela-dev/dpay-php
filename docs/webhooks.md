@@ -21,6 +21,35 @@ in pure PHP, or opt-in and mostly automatic in Laravel.
 Configure up to 5 independent endpoints at **Dashboard -> Webhooks**, each
 with its own signing secret and event filter.
 
+### What has actually been delivered to us (2026-08-16)
+
+Verified end-to-end against a real DPay-signed delivery over a public
+HTTPS endpoint — signature checked with `WebhookVerifier`, payload parsed
+by `WebhookEventFactory`:
+
+| Event | Live-verified | Notes |
+|---|---|---|
+| `payment.paid` | ✅ | Parsed to `PaymentEvent`, all fields mapped |
+| `payment.failed` | ✅ | Triggered via Moamalat's "Simulate Declined Payment" |
+| `payment.expired` | ✅ | **Arrived ~5 minutes after `expired_at`.** `getSession()` reported `expired` immediately — don't read webhook silence as "still pending" |
+| `webhook.test` | ✅ | Real dashboard event, parsed to `TestEvent`. Carries an extra `test: true` field the DTO doesn't map — it lands in `->raw` |
+| `payment.refunded` | ❌ | Dashboard-only; no REST endpoint to trigger one |
+| `payment.voided` | ❌ | Same. `SessionStatus::VOIDED` has therefore never been seen in a real response |
+
+Two caveats from those deliveries:
+
+- **`system_reference`, `network_reference`, `paid_through` and
+  `payer_account` were `null` in every single one.** The SDK's `?string`
+  handling is proven; the populated case is not.
+- **The `data` you sent comes back with DPay's `fee_amount`, `fee_percent`
+  and `original_amount` merged in**, and `amount` is the *rounded settled*
+  figure, not what you requested. See
+  [troubleshooting.md](troubleshooting.md#the-settled-amount-doesnt-match-what-i-asked-for).
+
+`tests/sandbox/webhook-receiver.php` is a standalone receiver for repeating
+this — it exercises `WebhookVerifier` and `WebhookEventFactory` directly,
+with no framework in between.
+
 ---
 
 ## Verifying a request — pure PHP

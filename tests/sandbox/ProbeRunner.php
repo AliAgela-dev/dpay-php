@@ -7,9 +7,16 @@ use DPay\Exceptions\DPayRateLimitException;
 /**
  * Paced, resumable runner for the sandbox scenarios.
  *
- * The sandbox throttles at roughly four rapid calls, so every call is spaced
- * and 429s are retried with exponential backoff. Results are appended to a
- * ledger so an interrupted run resumes instead of restarting.
+ * Every call is spaced and 429s are retried with exponential backoff.
+ * Results are appended to a ledger so an interrupted run resumes instead of
+ * restarting.
+ *
+ * On the throttle: this class used to claim the sandbox trips "at roughly
+ * four rapid calls". Measured on 2026-08-16, `GET /payment/sessions/{id}`
+ * took **36 consecutive unpaced calls** to return a 429, and a full probe
+ * run at 3s spacing never triggered one at all. The 3s default is therefore
+ * very conservative — deliberately so, since the limit is DPay's to change
+ * and a throttled run costs more than a slow one.
  */
 final class ProbeRunner
 {

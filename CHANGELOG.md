@@ -20,6 +20,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lost the next time the probe ran. The preamble now lives in the generator
   and is re-emitted each time.
 
+### Documentation
+- **Documented DPay's settlement rounding.** Measured live: the settled
+  amount is `round(amount + fee)` to the nearest whole LYD, half up, applied
+  at payment time. `10.49` settles at `11`, `10.01` settles at `10` — so a
+  payment can settle *below* the requested amount. None of
+  `OpenSessionResponse`'s `amount`/`fee`/`feeAmount`/`total` equals the
+  settled figure. Previously undocumented anywhere.
+- **Documented DPay's per-gateway deposit limits.** Enforced server-side and
+  merchant-configurable per pay method (Edfali on our sandbox merchant: min
+  `5`, max `60000`). Records why `min_amount` must stay permissive at `0.01`
+  rather than hardcoding a floor DPay may not share.
+- **Documented that `data` is not exclusively yours on the way back** — DPay
+  merges `fee_amount`, `fee_percent` and `original_amount` into it. Merchant
+  keys survive, but those three names collide.
+- Corrected the rate-limit claim: `GET /payment/sessions/{id}` tolerated **35
+  consecutive unpaced calls** and 429'd on the 36th. Docs and `ProbeRunner`
+  previously claimed 4–5 requests would trip it.
+- Corrected session expiry: 10 minutes for Moamalat/Sadad, 15 otherwise.
+  `dto-reference.md` and `troubleshooting.md` said ~30 minutes.
+- Recorded that the Moamalat sandbox link is a **two-button simulator**, not
+  a card-entry LightBox — the design spec's Moamalat test cards are unusable
+  there, and production remains unverified.
+- Recorded that `payment.expired` is delivered ~5 minutes after `expired_at`,
+  while `getSession()` reports `expired` immediately.
+- Recorded which webhook events have now been verified against real
+  DPay-signed deliveries (`payment.paid`, `payment.failed`,
+  `payment.expired`, `webhook.test`) and which have not
+  (`payment.refunded`, `payment.voided` — dashboard-only, so
+  `SessionStatus::VOIDED` remains unseen in a real response).
+
 ### Tests
 - Nine tests covering previously unexercised error paths in `Transport`:
   `403` → `DPayAuthException` (only `401` was tested, though both share the

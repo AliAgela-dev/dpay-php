@@ -62,7 +62,10 @@ $record = static function (string $outcome, string $detail, array $extra = []) u
         'at' => date('c'),
         'outcome' => $outcome,
         'detail' => $detail,
-        'signature_present' => $signature !== '',
+        // The signature is a MAC, not a secret, and logging it makes a
+        // delivery that arrived before the real secret was known verifiable
+        // after the fact from raw_body + timestamp_header alone.
+        'signature' => $signature,
         'timestamp_header' => $timestamp,
         'body_bytes' => strlen($rawBody),
         'raw_body' => $rawBody,
