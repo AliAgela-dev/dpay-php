@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-08-16
+
+Relicensed under MIT, and the first release verified live against DPay's
+real sandbox rather than only against a fake HTTP client. That verification
+turned up gateway behaviour the SDK had never documented — most importantly
+that **DPay does not settle the amount you send** — so much of this release
+is corrections to what the docs claimed.
+
 ### Changed
 - **Relicensed MIT.** `LICENSE` and `composer.json` previously declared the
   package proprietary ("all rights reserved") while the repository was
@@ -276,6 +284,7 @@ for the full report.
 - **Sandbox `tx_id` is `sb_txn_<hex>`.** Production format may differ;
   the SDK doesn't parse it, so no impact expected.
 
-[unreleased]: https://github.com/AliAgela-dev/dpay-php/compare/v0.2.0...HEAD
+[unreleased]: https://github.com/AliAgela-dev/dpay-php/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/AliAgela-dev/dpay-php/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/AliAgela-dev/dpay-php/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/AliAgela-dev/dpay-php/releases/tag/v0.1.0

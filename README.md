@@ -67,7 +67,7 @@ Not yet published to Packagist, so add the repository explicitly:
         { "type": "vcs", "url": "https://github.com/AliAgela-dev/dpay-php.git" }
     ],
     "require": {
-        "aliagela-dev/dpay-php": "^0.2"
+        "aliagela-dev/dpay-php": "^0.3"
     }
 }
 ```
