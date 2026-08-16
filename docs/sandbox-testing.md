@@ -154,7 +154,7 @@ contradict what these docs previously claimed.
 | **Session expiry** | Moamalat expired exactly **10 minutes** after open. Earlier docs claiming ~30 minutes were wrong. |
 | **Moamalat sandbox is a simulator** | The `payment_link` opens a page with **"Simulate Successful Payment" / "Simulate Declined Payment"** buttons — not a card-entry LightBox. The Moamalat test card numbers in the design spec are unusable here. Production behaviour is genuinely different and remains unverified. |
 | **`payment.expired` is slow** | Delivered roughly **5 minutes after** the session's `expired_at`. `getSession()` reported `expired` immediately; the webhook lagged. Don't treat webhook silence as "not expired yet". |
-| **Reference fields are null in sandbox** | `system_reference`, `network_reference`, `paid_through` and `payer_account` came back `null` in **every** delivery. The SDK's `?string` handling is exercised; the populated case has never been seen. |
+| **Reference fields are null in sandbox** | `system_reference`, `network_reference`, `paid_through` and `payer_account` came back `null` in **every** sandbox delivery we received (all Edfali/MobiCash/bank gateways). This is expected rather than suspicious: the official Postman examples show them populated (`"Visa"`, `"****1234"`) only on **Moamalat** events with `live: true`, so they look like card-rail fields that simply don't apply to wallet and bank gateways. The SDK's `?string` handling is exercised; the populated case is still unverified first-hand. |
 
 Wrong-OTP behaviour was confirmed live: `verifySession()` returns `null`
 rather than throwing, and the session survives — a subsequent correct OTP

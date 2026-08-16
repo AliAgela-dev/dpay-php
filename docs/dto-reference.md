@@ -42,7 +42,7 @@ a custom provider.
 | `birthYear` | `?string` | Sadad only. 4 digits, cross-checked against the wallet registration record. |
 | `category` | `?int` | Sadad only, optional. 0–36. Zero is meaningful — never filtered as falsy. |
 | `description` | `?string` | Optional. Sent as a **top-level** field (matches MobiCash's documented shape), not nested under `data`. |
-| `data` | `array<string, mixed>` | Optional free-form merchant metadata, echoed back in webhooks. Independent of `description`. **Not exclusively yours on the way back:** DPay merges `fee_amount`, `fee_percent` and `original_amount` into it. Your own keys survive alongside them (verified live 2026-08-16), but reusing any of those three names means your value is silently replaced. |
+| `data` | `array<string, mixed>` | Optional free-form merchant metadata, echoed back in webhooks. Independent of `description`. **Not exclusively yours on the way back:** DPay merges its own keys into it. Every payment gets `fee_amount`, `fee_percent` and `original_amount` (verified live 2026-08-16); a `payment.refunded` also carries `refund_amount` and `refund_reference`, and a `payment.voided` carries `void_reference` (per the official Postman collection). Your own keys survive alongside them, but reusing any of those six names means your value is silently replaced. |
 
 **Method:** `toBody(): array` — builds the JSON body, stripping null fields
 (and dropping `data` entirely when it's an empty array).

@@ -36,11 +36,31 @@ by `WebhookEventFactory`:
 | `payment.refunded` | ❌ | Dashboard-only; no REST endpoint to trigger one |
 | `payment.voided` | ❌ | Same. `SessionStatus::VOIDED` has therefore never been seen in a real response |
 
+### Refunds and voids cannot be triggered — by anyone
+
+Worth stating plainly, because it is easy to go looking for a button that
+does not exist. Enumerating **every** endpoint in the official Postman
+collection (auth, sessions, payments, pay-methods, invoices) turns up **no
+refund or void route at all**. `payment.refunded` and `payment.voided`
+exist only as *inbound* webhook examples: DPay tells you a refund happened,
+and gives you no way to cause one.
+
+Both are **Moamalat only** — the spec says so explicitly — so they will
+never appear for Edfali, MobiCash, Sadad or the bank gateways. And per the
+spec, a void "typically only works within a short window after
+authorisation", since it releases a hold that has not yet settled; a refund
+reverses an already-settled charge and has no such window.
+
+If you need to reverse a payment, that happens outside this API.
+
 Two caveats from those deliveries:
 
 - **`system_reference`, `network_reference`, `paid_through` and
-  `payer_account` were `null` in every single one.** The SDK's `?string`
-  handling is proven; the populated case is not.
+  `payer_account` were `null` in every single one.** That looks like
+  correct behaviour rather than a gap: the Postman examples only show them
+  populated (`"Visa"`, `"****1234"`) on Moamalat events, so they appear to
+  be card-rail fields that don't apply to wallet or bank gateways. The
+  SDK's `?string` handling is proven; the populated case is not.
 - **The `data` you sent comes back with DPay's `fee_amount`, `fee_percent`
   and `original_amount` merged in**, and `amount` is the *rounded settled*
   figure, not what you requested. See
