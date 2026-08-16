@@ -64,6 +64,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bank gateways look like correct behaviour rather than a mapping gap.
 
 ### Tests
+- Three tests for the Laravel webhook controller, the least-covered code in
+  the repo (`src/Laravel` is excluded from PHPStan, so feature tests are its
+  only safety net):
+  - **The signature is verified against the raw request bytes, not a
+    re-serialized body.** This is the failure mode `troubleshooting.md` tells
+    people to look for, and nothing pinned it. The fixture is built so a
+    `json_decode`/`json_encode` round-trip must change the bytes (Arabic
+    text, an escaped slash, a trailing zero on `10.50`, non-alphabetical key
+    order), and asserts the premise so it cannot silently stop proving
+    anything. Verified by mutation: making the controller re-serialize kills
+    this test and no other.
+  - A real captured delivery from 2026-08-16 parses end to end — pinning the
+    rounded settled `amount`, DPay's fee keys merged into merchant `data`,
+    and null reference fields on a wallet gateway.
+  - Missing signature headers entirely are rejected with 401.
 - Nine tests covering previously unexercised error paths in `Transport`:
   `403` → `DPayAuthException` (only `401` was tested, though both share the
   match arm), the `errors` property in all three of its states (populated,
