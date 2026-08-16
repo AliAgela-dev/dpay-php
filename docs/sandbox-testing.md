@@ -139,6 +139,27 @@ Run just these:
 DPAY_API_KEY=sb_tk_... php tests/sandbox/probe.php --provider=error-401-bad-token
 ```
 
+### Live gateway behaviour (measured 2026-08-16)
+
+Findings from a full live run — all against `https://dpay.ly/api/sandbox`.
+These describe **DPay's behaviour**, not SDK behaviour, and several
+contradict what these docs previously claimed.
+
+| Behaviour | What we measured |
+|---|---|
+| **Settlement rounding** | Settled amount is `round(total)` to the nearest whole LYD, half up — not the `amount` you sent, and not `total` either. `10.01`→`10`, `10.49`→`11`, `10.50`→`11`, `10.99`→`11`, `12.00`→`12`. Rounds **to nearest**, so you can settle below your request. See [troubleshooting.md](troubleshooting.md#the-settled-amount-doesnt-match-what-i-asked-for). |
+| **Per-gateway deposit limits** | Enforced server-side and merchant-configurable per pay method. Edfali on this account: minimum `5`, maximum `60000`. `4.99` and `9999999` both rejected with `DPayValidationException`. No SDK default can be correct — this is why `min_amount` stays permissive at `0.01`. |
+| **`data` is not exclusively yours** | DPay merges `fee_amount`, `fee_percent`, `original_amount` into the `data` you send. Merchant keys survive; those three names collide. |
+| **Rate limiting** | Far laxer than these docs claimed. `GET /payment/sessions/{id}` took **36 consecutive unpaced calls** to 429. A full probe run at 3s spacing never tripped it once. |
+| **Session expiry** | Moamalat expired exactly **10 minutes** after open. Earlier docs claiming ~30 minutes were wrong. |
+| **Moamalat sandbox is a simulator** | The `payment_link` opens a page with **"Simulate Successful Payment" / "Simulate Declined Payment"** buttons — not a card-entry LightBox. The Moamalat test card numbers in the design spec are unusable here. Production behaviour is genuinely different and remains unverified. |
+| **`payment.expired` is slow** | Delivered roughly **5 minutes after** the session's `expired_at`. `getSession()` reported `expired` immediately; the webhook lagged. Don't treat webhook silence as "not expired yet". |
+| **Reference fields are null in sandbox** | `system_reference`, `network_reference`, `paid_through` and `payer_account` came back `null` in **every** delivery. The SDK's `?string` handling is exercised; the populated case has never been seen. |
+
+Wrong-OTP behaviour was confirmed live: `verifySession()` returns `null`
+rather than throwing, and the session survives — a subsequent correct OTP
+still reaches `paid`.
+
 ### Differences from our initial assumptions (already patched)
 
 | Assumption | Reality | Fix |

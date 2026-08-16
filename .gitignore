@@ -10,3 +10,4 @@ composer.lock
 .env.*
 !.env.example
 /tests/sandbox/.probe-ledger.json
+/tests/sandbox/.webhook-log.jsonl

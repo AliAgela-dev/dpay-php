@@ -8,7 +8,8 @@ Every error the SDK can throw, what it means, what to check.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Amount is below the minimum of N.` | Amount < `min_amount` (default `0.01`). | Either raise the amount or lower `min_amount` in config. Decimal amounts (e.g. `49.5`) are accepted — there's no whole-number requirement. |
+| `Amount is below the minimum of N.` | **The SDK's own** pre-flight check: amount < `min_amount` (default `0.01`). | Either raise the amount or lower `min_amount` in config. Decimal amounts (e.g. `49.5`) are accepted — there's no whole-number requirement. |
+| `Amount is below the minimum deposit of N.` / `Amount exceeds the maximum deposit of N.` | **DPay's** own per-gateway limits, which are configured by the merchant in DPay's dashboard and are **not** the same thing as the SDK's `min_amount`. Observed live 2026-08-16 on Edfali: minimum `5`, maximum `60000`. | These are merchant-configurable per pay method, so no SDK default can be correct — that is exactly why `min_amount` defaults to a permissive `0.01` and lets DPay be the authority. Check your dashboard for the gateway's configured range. A future `PayMethodsClient` reading `GET /pay-methods` would let the SDK surface them before you open a session; see the spec-alignment table in `CLAUDE.md`. |
 | `pay_method is required` / `customer_mobile is required` / similar messages from DPay | Your provider's `sendOtp` produced a body DPay rejected — typically because the `$fields` you passed didn't match the provider's `requiredFields()` schema. | Run `$provider->requiredFields()` and make sure your input includes those keys. Check [docs/providers.md](providers.md). |
 | Sudden 422 on a previously-working integration | DPay changed their accepted `pay_method` strings. | Override via env, e.g. `DPAY_PAY_METHOD_EDFALI=edfali_v2`. No redeploy needed. |
 
@@ -36,7 +37,7 @@ Every error the SDK can throw, what it means, what to check.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Too Many Attempts.` | You (or your test suite) fired requests faster than DPay's rate limit. The sandbox is aggressive — even 4–5 requests in quick succession can trip it. | Back off and retry later. Don't loop-retry immediately; space calls out (the sandbox probe uses 2.5–15s delays). |
+| `Too Many Attempts.` | You (or your test suite) fired requests faster than DPay's rate limit. Measured 2026-08-16: `GET /payment/sessions/{id}` tolerated **35 consecutive unpaced calls** and 429'd on the 36th. An earlier version of this table said 4–5 requests would trip it; that is not what the sandbox does today. | Back off and retry later. Don't loop-retry immediately. Treat the exact threshold as DPay's to change — pace defensively rather than tuning to 35. |
 
 ### `UnknownProviderException`
 
@@ -64,10 +65,52 @@ See [webhooks.md](webhooks.md) for full setup.
 
 ## Common gotchas
 
+### "The settled amount doesn't match what I asked for"
+
+**This is DPay's behaviour, not an SDK bug, and it is the single most
+surprising thing about the gateway.** Verified live 2026-08-16.
+
+DPay settles a payment at **`round(total)` to the nearest whole LYD, half
+up** — where `total` is your `amount` plus DPay's fee. Nothing rounds at
+session-open time, so the discrepancy only appears once the payment
+completes:
+
+| You request | `fee_amount` | `total` at open | **Settled** |
+|---|---|---|---|
+| `10.01` | `0.02` | `10.03` | **`10`** ↓ |
+| `10.49` | `0.02` | `10.51` | **`11`** ↑ |
+| `10.50` | `0.02` | `10.52` | **`11`** |
+| `10.99` | `0.02` | `11.01` | **`11`** |
+| `12.00` | `0.02` | `12.02` | **`12`** |
+
+Note it rounds **to nearest, not up** — `10.01` settles at `10`, so you can
+be paid slightly *less* than you asked for, as well as more. And it rounds
+`total`, not `amount`: `10.49` settles at `11` even though `round(10.49)`
+is `10`, because `round(10.49 + 0.02)` is `11`.
+
+`OpenSessionResponse` exposes `amount`, `fee`, `feeAmount` and `total`, so
+you can see the fee before the customer pays — but **none of those four
+fields equals the figure that finally settles.** Read the settled amount
+from `getSession()` or the `payment.paid` webhook, both of which report the
+rounded value, with your original in `data.original_amount`.
+
+If your reconciliation needs exact amounts, request whole-LYD amounts.
+
+### "DPay overwrote keys in my `data` object"
+
+DPay merges three keys of its own into the `data` you send —
+`fee_amount`, `fee_percent`, and `original_amount` — and echoes the result
+back on `getSession()` and in webhooks. Your own keys survive alongside
+them (verified live), but **if you use any of those three names yourself,
+your values are silently replaced.** Namespace your metadata or avoid
+those keys.
+
 ### "`verifyOtp` returns `false` even though I entered the right code"
 
 The DPay session can be:
-- expired (default 30 min after open)
+- expired — 10 minutes after open for Moamalat and Sadad, 15 for everything
+  else (a Moamalat session was observed live expiring exactly 10 minutes
+  after open on 2026-08-16; earlier docs said 30 minutes, which is wrong)
 - already verified once (DPay's idempotency rules; depends on tier)
 - never opened (you passed the wrong reference from `sendOtp`)
 - using a stale OTP (user requested a new one — only the latest one works)

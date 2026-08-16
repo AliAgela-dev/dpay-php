@@ -42,7 +42,7 @@ against the spec yourself before assuming a row is still accurate.
 | Sadad | Supported; needs `customer_mobile` + `birth_year` (4 digits) + optional `category` (0–36) | ✅ Shipped as `SadadProvider`, disabled by default (merchant-gated on DPay's side, not code-gated). Needed **zero** `AbstractDPayProvider` changes — see Architecture below. |
 | Webhooks | HMAC-signed, 5 endpoints, `payment.paid/failed/expired/refunded/voided` | ✅ Resolved. `supportsWebhook()` returns `true` for every provider; `DPay\Webhooks\WebhookVerifier` (HMAC-SHA256 + 5-min replay window) and `WebhookEventFactory` (typed parsing for all 6 events, including `webhook.test`) ship in `src/Webhooks/`. See [docs/webhooks.md](docs/webhooks.md). |
 | `Idempotency-Key` | Supported header on `sessions/open`; replays return the original session | ✅ SDK-side resolved. `DPayClient::openSession()` takes an optional `$idempotencyKey` and sends the header. Live-confirmed the sandbox itself doesn't honor replay correctly yet — that's a sandbox-side gap, not an SDK bug. See `SANDBOX-VALIDATION.md`. |
-| Per-gateway limits | `GET /api/pay-methods` returns live `fee`, `min_deposit`, `max_deposit` per gateway | ⚠️ **Still open.** No `PayMethod` DTO, no `PayMethodsClient`. Single global `min_amount`, no max check. |
+| Per-gateway limits | `GET /api/pay-methods` returns live `fee`, `min_deposit`, `max_deposit` per gateway | ⚠️ **Still open, and now known to bite.** No `PayMethod` DTO, no `PayMethodsClient`. Live-confirmed 2026-08-16 that DPay enforces these server-side (Edfali on our sandbox merchant: min `5`, max `60000`) and that they are **merchant-configurable per pay method from DPay's dashboard**. That is precisely why `min_amount` must stay permissive at `0.01` — no static SDK default can be right, so DPay has to be the authority. Reading `/pay-methods` is the only correct fix. |
 
 A live sandbox check on 2026-07-28 found: `GET /api/sandbox/pay-methods`
 returns real per-gateway data today (200, all 9 gateways with
@@ -159,6 +159,22 @@ health-portal behavior that host apps still depend on:
   no whole-number check — that was an SDK-imposed invariant inherited from
   health-portal and it contradicted the spec; Plan 1 removed it. Don't
   reintroduce it.
+  **The `0.01` default is deliberately permissive and should stay that way.**
+  DPay enforces its own per-gateway min/max deposit server-side, and those
+  are merchant-configurable from DPay's dashboard — so any static SDK floor
+  above `0.01` would reject amounts some merchant has legitimately enabled.
+  Let DPay be the authority; the SDK floor exists only to catch nonsense.
+- **DPay does not settle the amount you send.** Verified live 2026-08-16:
+  the settled figure is `round(amount + fee)` to the nearest whole LYD,
+  half up — applied at payment time, not at open. `10.49` (fee `0.02`,
+  total `10.51`) settles at `11`; `10.01` (total `10.03`) settles at `10`,
+  i.e. *below* the request. `OpenSessionResponse` exposes `amount`, `fee`,
+  `feeAmount` and `total`, and **none of them equals the settled value** —
+  read that from `getSession()` or the `payment.paid` webhook, where the
+  original survives as `data.original_amount`. This is DPay behaviour, not
+  something to "fix" in the SDK, but don't write docs or tests that assume
+  an amount round-trips end to end. See
+  [docs/sandbox-testing.md](docs/sandbox-testing.md) for the measured table.
 - **`UnknownProviderException` extends `InvalidArgumentException`, not
   `DPayException`.** A `catch (DPayException)` around a
   `provider($code)->sendOtp(...)` chain will *not* catch an unknown or disabled

@@ -42,7 +42,7 @@ a custom provider.
 | `birthYear` | `?string` | Sadad only. 4 digits, cross-checked against the wallet registration record. |
 | `category` | `?int` | Sadad only, optional. 0–36. Zero is meaningful — never filtered as falsy. |
 | `description` | `?string` | Optional. Sent as a **top-level** field (matches MobiCash's documented shape), not nested under `data`. |
-| `data` | `array<string, mixed>` | Optional free-form merchant metadata, echoed back in webhooks. Independent of `description`. |
+| `data` | `array<string, mixed>` | Optional free-form merchant metadata, echoed back in webhooks. Independent of `description`. **Not exclusively yours on the way back:** DPay merges `fee_amount`, `fee_percent` and `original_amount` into it. Your own keys survive alongside them (verified live 2026-08-16), but reusing any of those three names means your value is silently replaced. |
 
 **Method:** `toBody(): array` — builds the JSON body, stripping null fields
 (and dropping `data` entirely when it's an empty array).
@@ -57,13 +57,22 @@ Returned by `openSession()`.
 |---|---|---|
 | `sessionId` | `int` | Use as the persisted reference. |
 | `status` | `SessionStatus` | Usually `PENDING` on open. |
-| `amount` | `float` | Echoed back from DPay. |
+| `amount` | `float` | Echoed back from DPay, unrounded. **Not what finally settles** — see the note below. |
 | `currency` | `string` | Always `LYD` in practice. |
 | `fee` | `float` | Fee percentage. |
 | `feeAmount` | `float` | Absolute fee in LYD. |
-| `total` | `float` | `amount + feeAmount`. |
+| `total` | `float` | `amount + feeAmount`. Still not the settled figure. |
 | `payMethod` | `string` | Echoed back. |
-| `expiredAt` | `string` | ISO-8601, default ~30 min from open. |
+| `expiredAt` | `string` | ISO-8601. 10 minutes from open for Moamalat and Sadad, 15 for everything else — verified live for Moamalat on 2026-08-16. (An earlier revision of this table said ~30 minutes; that was wrong.) |
+
+> **None of `amount`, `fee`, `feeAmount` or `total` is the amount that
+> finally settles.** DPay settles at `round(total)` to the nearest whole
+> LYD, half up, and only at payment time — so a session opened for `10.49`
+> with a `0.02` fee (`total` `10.51`) settles at `11`, while `10.01`
+> (`total` `10.03`) settles at `10`. Read the settled value from
+> `getSession()` or the `payment.paid` webhook; your original is preserved
+> as `data.original_amount`. See
+> [troubleshooting.md](troubleshooting.md#the-settled-amount-doesnt-match-what-i-asked-for).
 | `data` | `mixed` | Provider-specific payload (`null` for most). |
 | `paymentLink` | `?string` | Set by providers that use redirect/Lightbox (Moamalat). |
 | `raw` | `array` | The full decoded JSON, for fields not mapped above. |

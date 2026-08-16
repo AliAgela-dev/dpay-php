@@ -14,19 +14,20 @@ the gateway isn't enabled on this merchant account yet, not because of a
 code defect — see [docs/providers.md § Sadad](docs/providers.md#sadad).
 
 `error-*` rows are cross-cutting error-path scenarios: they pass when the
-SDK maps a real DPay failure onto the expected exception class. They have
-no rows below yet — they were added after this report was last generated,
-and will appear on the next probe run.
+SDK maps a real DPay failure onto the expected exception class.
 
 | Scenario | Status | Detail |
 |---|---|---|
-| `edfali` | fail | Idempotency-Key replay opened a new session (1497) instead of returning the original (1496) |
-| `mobicash` | pass | session 1502 paid, amount 10.5 preserved |
-| `masrefypay` | pass | session 1503 paid, amount 10.5 preserved |
-| `masrefypay-crossbank` | pass | session 1504 paid, amount 10.5 preserved |
-| `yousrpay` | pass | session 1505 paid, amount 10.5 preserved |
-| `yousrpay-crossbank` | pass | session 1506 paid, amount 10.5 preserved |
-| `saharapay` | pass | session 1507 paid, amount 10.5 preserved |
-| `saharapay-crossbank` | pass | session 1508 paid, amount 10.5 preserved |
+| `edfali` | fail | Idempotency-Key replay opened a new session (1597) instead of returning the original (1596) |
+| `mobicash` | pass | session 1598 paid, amount 10.5 preserved |
+| `masrefypay` | pass | session 1599 paid, amount 10.5 preserved |
+| `masrefypay-crossbank` | pass | session 1600 paid, amount 10.5 preserved |
+| `yousrpay` | pass | session 1601 paid, amount 10.5 preserved |
+| `yousrpay-crossbank` | pass | session 1602 paid, amount 10.5 preserved |
+| `saharapay` | pass | session 1603 paid, amount 10.5 preserved |
+| `saharapay-crossbank` | pass | session 1604 paid, amount 10.5 preserved |
 | `moamalat` | pass | payment_link present |
 | `sadad` | fail | DPay\Exceptions\DPayValidationException: Unsupported payment method: sadad |
+| `error-401-bad-token` | pass | DPay\Exceptions\DPayAuthException as expected: Invalid sandbox API token. |
+| `error-404-unknown-session` | pass | DPay\Exceptions\DPaySessionNotFoundException as expected: Payment session not found |
+| `error-422-invalid-pay-method` | pass | DPay\Exceptions\DPayValidationException as expected: The selected pay method is invalid. |
