@@ -177,7 +177,7 @@ method ignores its OTP argument and **polls `getSession`** instead, returning
 No `customer_mobile`, no `card_number`. The user pays via the
 `payment_link` in the response.
 
-> **Gotcha:** The original health-portal seeder includes a 16-digit
+> **Gotcha:** The original implementation's seeder includes a 16-digit
 > `card_number` field for Moamalat. The provider code never reads that
 > field — it's a leftover from a previous integration approach. We
 > intentionally default to `[]`. If your front-end still collects a card

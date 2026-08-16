@@ -11,10 +11,10 @@ use DPay\Exceptions\UnknownProviderException;
  * In-memory registry of payment providers.
  *
  * Replaces the Laravel-bound PaymentGatewayManager + the four GatewayManager
- * actions in the health-portal. No service container required — providers
+ * actions in the original app. No service container required — providers
  * are added via register(), then resolved by code.
  *
- * Disabled providers are rejected at resolve time, matching the health-portal
+ * Disabled providers are rejected at resolve time, matching the original
  * behavior where ResolveGatewayProviderAction throws on disabled gateways.
  */
 class GatewayManager
@@ -101,7 +101,7 @@ class GatewayManager
 
     /**
      * Frontend-ready listing of every enabled provider. Drop-in replacement
-     * for the JSON shape the health-portal's PaymentMethodController returns.
+     * for the JSON shape the original app's PaymentMethodController returns.
      *
      * @return list<array{
      *     code: string,

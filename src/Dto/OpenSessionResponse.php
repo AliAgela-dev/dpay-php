@@ -7,7 +7,7 @@ namespace DPay\Dto;
 /**
  * Response from POST /payment/sessions/open.
  *
- * Schema mirrors the health-portal client's array typedef:
+ * Schema mirrors the original client's array typedef:
  *   session_id, status, amount, currency, fee, fee_amount, total,
  *   pay_method, expired_at, data, payment_link (optional).
  */

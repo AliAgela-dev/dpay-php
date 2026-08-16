@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Relicensed MIT.** `LICENSE` and `composer.json` previously declared the
+  package proprietary ("all rights reserved") while the repository was
+  public — a contradiction that made it unusable by anyone who read it. The
+  copyright holder owns the work and has chosen to release it as open source.
+- Removed every reference to the internal application the SDK was originally
+  extracted from (24 mentions across 15 files, including source docblocks),
+  replacing them with neutral wording. The history is still explained; the
+  private system is no longer named.
+- Deleted the `docs/superpowers/` planning archive (design spec and six
+  implementation plans). It was internal working material, not user
+  documentation, and nothing linked to it.
+- README no longer describes the package as private, and points at the
+  licence, contributing guide and security policy.
+
 ### Added
+- **`SECURITY.md`** — a private vulnerability disclosure path via GitHub
+  Security Advisories. For a payments library this is close to mandatory:
+  previously the only way to report a signature-verification flaw was a
+  public issue. Scopes in webhook verification, credential leakage and
+  request forgery; scopes out DPay's own gateway behaviour.
+- **`CONTRIBUTING.md`** — setup, the command set, why `composer.lock` is
+  gitignored, testing conventions (including that the Laravel bridge is
+  guarded only by feature tests), how to run the live sandbox probe, and the
+  intentional behaviours not to "fix" without discussion.
+- **A README section on the three DPay behaviours that surprise people** —
+  settlement rounding, per-gateway deposit limits, and `data` key merging —
+  promoted from `troubleshooting.md` to the front page, since each one
+  changes what a merchant actually gets paid.
+- `.claude/` is now gitignored, so local agent artifacts can't be committed
+  by accident.
 - Cross-cutting `error-*` scenarios in the live sandbox probe, asserting
   which exception a real DPay failure maps to: `error-401-bad-token`,
   `error-404-unknown-session`, `error-422-invalid-pay-method`. See
@@ -151,7 +181,7 @@ for the full report.
 - `DPay\Client\DPayClientFactory` — Guzzle-backed convenience factory.
 - `DPay\Config\DPayConfig` — immutable value object, `fromArray()` factory.
 - `DPay\Support\MockTransport` — synthetic responses for dev/testing,
-  identical behaviour to the original health-portal mock.
+  identical behaviour to the original implementation's mock.
 - Typed DTOs: `OpenSessionRequest`, `OpenSessionResponse`,
   `VerifySessionResponse`, `GetSessionResponse`, `SessionStatus` enum,
   `PaymentField` value object.
@@ -179,7 +209,7 @@ for the full report.
 - `PaymentField` describes a `sendOtp` input: key, regex/digits, en+ar
   labels, en+ar placeholders, `input_type` for the frontend.
 - `PaymentField::phoneNumber()` and `PaymentField::cardNumber(digits: 7)`
-  named constructors match the health-portal seeder defaults.
+  named constructors match the original seeder defaults.
 - Override via constructor (pure PHP) or `dpay.gateways.*.required_fields`
   config key (Laravel).
 - `DPay\Laravel\PaymentFieldRules::for($provider, $prefix)` converts the
@@ -193,7 +223,7 @@ for the full report.
 - `describe()` returns the frontend-ready JSON listing
   (`code, name, logo, requires_otp, supports_status_check, supports_refund,
   supports_webhook, required_fields`) — drop-in replacement for the
-  health-portal's `PaymentMethodController` shape.
+  the original app's `PaymentMethodController` shape.
 
 #### Laravel bridge (optional, auto-discovered)
 - `DPay\Laravel\DPayServiceProvider` binds `DPayConfig`, `DPayClientInterface`,

@@ -4,11 +4,49 @@ Framework-agnostic PHP SDK for the **DPay** payment gateway (Libya), with
 provider abstractions for Edfali, MobiCash, Sadad, SaharaPay, YousrPay,
 MasrefyPay, and Moamalat. Ships an optional Laravel bridge.
 
-Reverse-engineered from the production `health-portal` implementation, then
+Reverse-engineered from a production Laravel implementation, then
 aligned against DPay's official API spec (https://dpay.ly/docs/api) and
 live-verified against their sandbox — see [SANDBOX-VALIDATION.md](SANDBOX-VALIDATION.md).
 Sandbox credentials are per-merchant; get your own before flipping
 `mock => false` in production.
+
+---
+
+## Read this before you integrate
+
+Three DPay behaviours surprise people. None of them are SDK bugs, and all
+three are measured, not assumed.
+
+**1. The amount you request is not the amount that settles.** DPay settles at
+`round(amount + fee)` to the **nearest whole LYD**, applied at payment time:
+
+| You request | fee | total | **settles at** |
+|---|---|---|---|
+| `10.01` | `0.02` | `10.03` | **`10`** ↓ |
+| `10.49` | `0.02` | `10.51` | **`11`** ↑ |
+| `10.50` | `0.02` | `10.52` | **`11`** |
+
+It rounds *to nearest*, so a payment can settle **below** what you asked for.
+`OpenSessionResponse` gives you `amount`, `fee`, `feeAmount` and `total` — and
+none of them is the settled figure. Read that from `getSession()` or the
+`payment.paid` webhook, where your original survives as
+`data.original_amount`. If you need exact amounts, request whole LYD.
+
+**2. Minimum and maximum deposits are DPay's, per gateway, and configurable
+by the merchant.** They're enforced server-side and rejected with
+`DPayValidationException`. This SDK's `min_amount` deliberately defaults to a
+permissive `0.01` and lets DPay be the authority — no static default could be
+right. The SDK cannot currently read these limits (DPay's `GET /pay-methods`
+is not yet implemented here), so check your dashboard.
+
+**3. Your `data` object comes back with DPay's keys merged in** —
+`fee_amount`, `fee_percent`, `original_amount` on every payment, plus
+`refund_amount` / `refund_reference` / `void_reference` on those events. Your
+own keys survive alongside them, but reusing any of those six names means
+your value is silently replaced.
+
+Full detail in [docs/troubleshooting.md](docs/troubleshooting.md) and
+[docs/sandbox-testing.md](docs/sandbox-testing.md).
 
 ---
 
@@ -21,15 +59,15 @@ Sandbox credentials are per-merchant; get your own before flipping
 
 ## Install
 
-This is a private package — wire it in via a Composer VCS repository:
+Not yet published to Packagist, so add the repository explicitly:
 
 ```json
 {
     "repositories": [
-        { "type": "vcs", "url": "git@github.com:AliAgela-dev/dpay-php.git" }
+        { "type": "vcs", "url": "https://github.com/AliAgela-dev/dpay-php.git" }
     ],
     "require": {
-        "aliagela-dev/dpay-php": "^0.1"
+        "aliagela-dev/dpay-php": "^0.2"
     }
 }
 ```
@@ -37,6 +75,10 @@ This is a private package — wire it in via a Composer VCS repository:
 ```bash
 composer require aliagela-dev/dpay-php
 ```
+
+MIT licensed — see [LICENSE](LICENSE). Contributions welcome:
+[CONTRIBUTING.md](CONTRIBUTING.md). Security issues go through
+[SECURITY.md](SECURITY.md), not public issues.
 
 ---
 

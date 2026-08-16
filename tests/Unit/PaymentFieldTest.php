@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 final class PaymentFieldTest extends TestCase
 {
-    public function test_phone_number_default_matches_health_portal_seeder(): void
+    public function test_phone_number_default_matches_the_original_seeder(): void
     {
         $f = PaymentField::phoneNumber();
 

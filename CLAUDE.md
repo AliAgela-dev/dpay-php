@@ -5,11 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 `aliagela-dev/dpay-php` — a framework-agnostic PHP 8.2+ SDK for the DPay payment
-gateway (Libya), with an optional Laravel bridge. Private package, distributed via
-Composer VCS repository, PSR-4 under `DPay\` → `src/`.
+gateway (Libya), with an optional Laravel bridge. MIT-licensed open source,
+not yet on Packagist (installed via Composer VCS repository), PSR-4 under
+`DPay\` → `src/`.
 
 The SDK was reverse-engineered from a production Laravel app (referred to
-throughout the source as "health-portal") and then probed against DPay's sandbox —
+throughout the source as "the original implementation") and then probed against
+DPay's sandbox —
 see [SANDBOX-VALIDATION.md](SANDBOX-VALIDATION.md) for captured request/response
 shapes.
 
@@ -147,7 +149,7 @@ facade exposes the whole surface.
 ## Behavioral contracts to preserve
 
 These are intentional and load-bearing — several exist to match the original
-health-portal behavior that host apps still depend on:
+original-implementation behaviour that host apps still depend on:
 
 - **`verifySession()` returns `null`, it does not throw**, for wrong OTP / expired
   / not-found. Provider `verifyOtp()` therefore returns `false` for ordinary user
@@ -157,7 +159,7 @@ health-portal behavior that host apps still depend on:
   a session (default `minAmount` is `0.01`, matching the spec's documented
   minimum) and throws `DPayValidationException` if it's too low. There is
   no whole-number check — that was an SDK-imposed invariant inherited from
-  health-portal and it contradicted the spec; Plan 1 removed it. Don't
+  the original implementation and it contradicted the spec; Plan 1 removed it. Don't
   reintroduce it.
   **The `0.01` default is deliberately permissive and should stay that way.**
   DPay enforces its own per-gateway min/max deposit server-side, and those

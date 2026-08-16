@@ -10,7 +10,7 @@ use DPay\Dto\PaymentField;
  * MobiCash — OTP via 7-digit card number.
  *
  * Default field schema: [card_number] (digits:7).
- * Health-portal note: sends card_number only, no customer_mobile.
+ * Note: sends card_number only, no customer_mobile.
  */
 final class MobiCashProvider extends AbstractDPayProvider
 {

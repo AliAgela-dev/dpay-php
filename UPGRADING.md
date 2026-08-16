@@ -88,7 +88,7 @@ the factory builds the `Transport` for you.
 
 `DPayConfig::$minAmount` was `int`, default `5`. It's now `float`, default
 `0.01` — matching DPay's documented minimum instead of an SDK-imposed
-whole-number floor inherited from health-portal.
+whole-number floor inherited from the original implementation.
 
 **If you relied on the old default of 5:** set it explicitly —
 `minAmount: 5.0` (constructor) or `DPAY_MIN_AMOUNT=5` (env, Laravel).

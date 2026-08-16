@@ -12,7 +12,7 @@ use DPay\Dto\PaymentField;
  * rules + attribute names, so $request->validate() works against the
  * same schema the frontend uses.
  *
- * Mirrors the behavior of the health-portal's PaymentFieldValidator so
+ * Mirrors the behavior of the original app's PaymentFieldValidator so
  * existing controllers can drop in this helper with a one-line change.
  *
  * Example:
