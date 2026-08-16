@@ -18,9 +18,12 @@ declare(strict_types=1);
  * and echoed to stderr, whether it verifies or not — a rejected delivery is
  * exactly as interesting as an accepted one.
  *
- * Responds 200 on success and 400 on a verification failure, matching the
- * Laravel controller. DPay may retry on non-2xx; that is intended, since a
- * retry of a genuinely bad signature is still a bad signature.
+ * Responds 200 on success and 400 on a verification failure. Note this
+ * deliberately does NOT match DPayWebhookController, which answers 401 so
+ * that DPay's retry/backoff applies. This is a diagnostic tool, not the
+ * bridge: 400 ("your request was malformed") describes what happened more
+ * honestly than 401 for a probe, and nothing here depends on DPay retrying.
+ * Don't copy this status code into the bridge, or vice versa.
  */
 
 require __DIR__.'/../../vendor/autoload.php';
