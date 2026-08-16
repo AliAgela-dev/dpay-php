@@ -47,8 +47,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recorded which webhook events have now been verified against real
   DPay-signed deliveries (`payment.paid`, `payment.failed`,
   `payment.expired`, `webhook.test`) and which have not
-  (`payment.refunded`, `payment.voided` — dashboard-only, so
+  (`payment.refunded`, `payment.voided` — not triggerable at all, so
   `SessionStatus::VOIDED` remains unseen in a real response).
+- **Refunds and voids cannot be triggered by anyone.** Enumerated every
+  endpoint in the official Postman collection: there is no refund or void
+  route. Both events are inbound-only, Moamalat-only, and a void works only
+  within a short window after authorisation. Documented in
+  [docs/webhooks.md](docs/webhooks.md) so nobody else goes hunting for the
+  button.
+- Completed the `data` collision list — beyond `fee_amount`/`fee_percent`/
+  `original_amount`, a refund adds `refund_amount` and `refund_reference`
+  and a void adds `void_reference`.
+- Softened the "reference fields are null" note: `system_reference`,
+  `network_reference`, `paid_through` and `payer_account` appear populated
+  only on Moamalat events in the official examples, so nulls on wallet and
+  bank gateways look like correct behaviour rather than a mapping gap.
 
 ### Tests
 - Nine tests covering previously unexercised error paths in `Transport`:

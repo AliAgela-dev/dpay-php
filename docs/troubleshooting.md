@@ -98,12 +98,20 @@ If your reconciliation needs exact amounts, request whole-LYD amounts.
 
 ### "DPay overwrote keys in my `data` object"
 
-DPay merges three keys of its own into the `data` you send —
-`fee_amount`, `fee_percent`, and `original_amount` — and echoes the result
+DPay merges keys of its own into the `data` you send, and echoes the result
 back on `getSession()` and in webhooks. Your own keys survive alongside
-them (verified live), but **if you use any of those three names yourself,
-your values are silently replaced.** Namespace your metadata or avoid
-those keys.
+them (verified live), but **if you use any of these names yourself, your
+values are silently replaced.** Namespace your metadata or avoid them:
+
+| Key | Appears on |
+|---|---|
+| `fee_amount`, `fee_percent`, `original_amount` | every payment (verified live) |
+| `refund_amount`, `refund_reference` | `payment.refunded` |
+| `void_reference` | `payment.voided` |
+
+The refund and void keys come from the official Postman collection — we've
+never received either event, since neither can be triggered through the API
+(see below).
 
 ### "`verifyOtp` returns `false` even though I entered the right code"
 
