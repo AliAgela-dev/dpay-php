@@ -111,6 +111,34 @@ PAYMENT_GATEWAY_SADAD_ENABLED=false
   event parsing are covered by 52 offline unit/feature tests instead. See
   [webhooks.md](webhooks.md).
 
+### Error-path scenarios
+
+The probe also runs `error-*` scenarios, which assert *which exception* the
+SDK maps a real DPay failure onto rather than running a payment flow. The
+offline suite pins the same mapping against a fake HTTP client; these prove
+it against real responses.
+
+| Scenario | Proves |
+|---|---|
+| `error-401-bad-token` | A deliberately invalid token → `DPayAuthException` |
+| `error-404-unknown-session` | `getSession()` on a nonexistent id → `DPaySessionNotFoundException` |
+| `error-422-invalid-pay-method` | An unknown `pay_method` → `DPayValidationException` |
+
+They run **after** the provider scenarios, so if one trips the throttle it
+costs a retry rather than one of the payment proofs.
+
+Two error paths are deliberately not scripted. **429** is exercised
+organically — `ProbeRunner::paced()` backs off on every 429 it meets, and
+forcing one on purpose would throttle the rest of the run for no new
+information. **500** can't be reliably provoked by anything the SDK is able
+to send, so asserting on one would just make the probe flaky.
+
+Run just these:
+
+```bash
+DPAY_API_KEY=sb_tk_... php tests/sandbox/probe.php --provider=error-401-bad-token
+```
+
 ### Differences from our initial assumptions (already patched)
 
 | Assumption | Reality | Fix |

@@ -142,6 +142,50 @@ foreach (dpay_scenarios() as $name => $scenario) {
     }
 }
 
+// Error scenarios run last, deliberately: they are the cheapest to redo, so
+// if anything here trips the throttle it costs a retry rather than one of the
+// payment proofs above.
+$badTokenClient = DPayClientFactory::create(new DPayConfig(
+    baseUrl: getenv('DPAY_BASE_URL') ?: 'https://dpay.ly/api/sandbox',
+    apiKey: 'sb_tk_deliberately_invalid_token',
+    timeout: 30,
+    mock: false,
+    minAmount: 0.01,
+));
+
+foreach (dpay_error_scenarios() as $name => $scenario) {
+    if (is_string($only) && $only !== '' && $name !== $only) {
+        continue;
+    }
+
+    if ($runner->isDone($name)) {
+        echo "[skip] {$name} — already passed\n";
+        continue;
+    }
+
+    echo "[run ] {$name} — {$scenario['proves']}\n";
+
+    $target = $scenario['client'] === 'bad-token' ? $badTokenClient : $client;
+    $expect = $scenario['expect'];
+    $call = $scenario['run'];
+
+    try {
+        $runner->paced(static fn () => $call($target));
+
+        $runner->record($name, 'fail', "expected {$expect} but the call succeeded");
+    } catch (DPayExceptionInterface $e) {
+        $matched = $e instanceof $expect;
+
+        $runner->record(
+            $name,
+            $matched ? 'pass' : 'fail',
+            $matched
+                ? $e::class.' as expected: '.$e->getMessage()
+                : "expected {$expect}, got ".$e::class.': '.$e->getMessage(),
+        );
+    }
+}
+
 $runner->writeReport(__DIR__.'/../../SANDBOX-VALIDATION.md');
 
 echo "\nLedger:\n";

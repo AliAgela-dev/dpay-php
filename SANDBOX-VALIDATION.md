@@ -6,11 +6,17 @@ as the primary spec reference by the official DPay API spec
 corroborating live evidence for what the spec documents, not as the source
 of truth itself. `CLAUDE.md` explains the split in more detail.
 
-The two `fail` rows below are documented, understood gaps, not regressions:
-`edfali`'s Idempotency-Key replay is a DPay sandbox-side limitation
-(reproduced independently via raw `curl`, outside the SDK); `sadad` fails
-because the gateway isn't enabled on this merchant account yet, not because
-of a code defect — see [docs/providers.md § Sadad](docs/providers.md#sadad).
+Two `fail` rows are known, understood gaps rather than regressions, and are
+expected until DPay changes something on their side: `edfali`'s
+Idempotency-Key replay is a DPay sandbox-side limitation (reproduced
+independently via raw `curl`, outside the SDK), and `sadad` fails because
+the gateway isn't enabled on this merchant account yet, not because of a
+code defect — see [docs/providers.md § Sadad](docs/providers.md#sadad).
+
+`error-*` rows are cross-cutting error-path scenarios: they pass when the
+SDK maps a real DPay failure onto the expected exception class. They have
+no rows below yet — they were added after this report was last generated,
+and will appear on the next probe run.
 
 | Scenario | Status | Detail |
 |---|---|---|

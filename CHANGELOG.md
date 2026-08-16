@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Cross-cutting `error-*` scenarios in the live sandbox probe, asserting
+  which exception a real DPay failure maps to: `error-401-bad-token`,
+  `error-404-unknown-session`, `error-422-invalid-pay-method`. See
+  [docs/sandbox-testing.md](docs/sandbox-testing.md).
+
+### Fixed
+- **`ProbeRunner::writeReport()` destroyed the explanatory prose in
+  `SANDBOX-VALIDATION.md` on every run.** It rebuilt the file as a heading
+  plus the results table, so anything written by hand above the table was
+  lost the next time the probe ran. The preamble now lives in the generator
+  and is re-emitted each time.
+
+### Tests
+- Nine tests covering previously unexercised error paths in `Transport`:
+  `403` → `DPayAuthException` (only `401` was tested, though both share the
+  match arm), the `errors` property in all three of its states (populated,
+  absent, non-array), `decode()` against an HTML error page / empty body /
+  valid-but-scalar JSON, and `3xx` falling through to the generic arm.
+
 ## [0.2.0] — 2026-07-31
 
 ### Added
