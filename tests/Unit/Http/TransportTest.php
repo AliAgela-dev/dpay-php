@@ -9,6 +9,7 @@ use DPay\Exceptions\DPayAuthException;
 use DPay\Exceptions\DPayException;
 use DPay\Exceptions\DPayNetworkException;
 use DPay\Exceptions\DPayRateLimitException;
+use DPay\Exceptions\DPaySessionNotFoundException;
 use DPay\Exceptions\DPayValidationException;
 use DPay\Http\Transport;
 use DPay\Tests\Unit\Support\FakeHttpClient;
@@ -81,6 +82,123 @@ final class TransportTest extends TestCase
         $http = (new FakeHttpClient())->queueJson(422, ['message' => 'bad otp']);
 
         self::assertNull($this->transport($http)->attempt('POST', '/verify', ['otp' => '0000']));
+    }
+
+    public function test_403_maps_to_auth_exception_just_like_401(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(403, ['message' => 'This action is unauthorized.']);
+
+        try {
+            $this->transport($http)->request('GET', '/x');
+            self::fail('Expected a DPayAuthException.');
+        } catch (DPayAuthException $e) {
+            self::assertSame(403, $e->httpStatus);
+            self::assertSame('This action is unauthorized.', $e->getMessage());
+        }
+    }
+
+    public function test_field_level_errors_are_exposed_on_the_exception(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(422, [
+            'message' => 'The given data was invalid.',
+            'errors' => ['card_number' => ['The card number must be 7 or 9 digits.']],
+        ]);
+
+        try {
+            $this->transport($http)->request('POST', '/x', ['a' => 1]);
+            self::fail('Expected a DPayValidationException.');
+        } catch (DPayValidationException $e) {
+            self::assertSame(
+                ['card_number' => ['The card number must be 7 or 9 digits.']],
+                $e->errors,
+            );
+        }
+    }
+
+    public function test_an_absent_errors_field_leaves_errors_null(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(422, ['message' => 'nope']);
+
+        try {
+            $this->transport($http)->request('POST', '/x', ['a' => 1]);
+            self::fail('Expected a DPayValidationException.');
+        } catch (DPayValidationException $e) {
+            self::assertNull($e->errors);
+        }
+    }
+
+    public function test_a_non_array_errors_field_degrades_to_null_rather_than_type_erroring(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(422, ['message' => 'nope', 'errors' => 'not-an-array']);
+
+        try {
+            $this->transport($http)->request('POST', '/x', ['a' => 1]);
+            self::fail('Expected a DPayValidationException.');
+        } catch (DPayValidationException $e) {
+            self::assertNull($e->errors);
+        }
+    }
+
+    /**
+     * DPay's sandbox serves a branded HTML 404 page for unrouted paths
+     * rather than a JSON error body — observed live against /auth/me,
+     * /payments and /invoices. decode() must swallow the unparseable body
+     * and still produce the status-mapped exception.
+     */
+    public function test_an_html_error_page_still_produces_the_status_mapped_exception(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(404, '<!DOCTYPE html><html><body>Not Found</body></html>');
+
+        try {
+            $this->transport($http)->request('GET', '/auth/me');
+            self::fail('Expected a DPaySessionNotFoundException.');
+        } catch (DPaySessionNotFoundException $e) {
+            self::assertSame(404, $e->httpStatus);
+            self::assertSame('DPay request failed.', $e->getMessage());
+            self::assertNull($e->errors);
+        }
+    }
+
+    public function test_an_empty_error_body_falls_back_to_the_generic_message(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(502, '');
+
+        try {
+            $this->transport($http)->request('GET', '/x');
+            self::fail('Expected a DPayException.');
+        } catch (DPayException $e) {
+            self::assertSame('DPay request failed.', $e->getMessage());
+            self::assertSame(502, $e->httpStatus);
+        }
+    }
+
+    public function test_a_successful_response_with_a_non_array_json_body_decodes_to_an_empty_array(): void
+    {
+        // Valid JSON, but a scalar — json_decode succeeds and returns a string.
+        $http = (new FakeHttpClient())->queueJson(200, '"just a string"');
+
+        self::assertSame([], $this->transport($http)->request('GET', '/x'));
+    }
+
+    public function test_a_successful_response_with_an_empty_body_decodes_to_an_empty_array(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(204, '');
+
+        self::assertSame([], $this->transport($http)->request('DELETE', '/x'));
+    }
+
+    public function test_a_redirect_is_not_treated_as_success(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(302, '');
+
+        try {
+            $this->transport($http)->request('GET', '/x');
+            self::fail('Expected a DPayException.');
+        } catch (DPayException $e) {
+            self::assertSame(302, $e->httpStatus);
+            // 3xx is outside every 4xx arm, so it lands on the generic default.
+            self::assertSame(DPayException::class, $e::class);
+        }
     }
 
     public function test_transport_failure_becomes_network_exception(): void
