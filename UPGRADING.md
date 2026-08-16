@@ -1,5 +1,24 @@
 # Upgrading
 
+## 0.2.0 → 0.3.0
+
+**No code changes required.** `0.3.0` contains no breaking API changes — it
+is a relicensing (proprietary → MIT), documentation corrections from a live
+verification run, and additional tests.
+
+Two things are worth reading even though nothing forces you to act:
+
+- **DPay does not settle the amount you send.** It settles at
+  `round(amount + fee)` to the nearest whole LYD, applied at payment time,
+  so `10.49` settles at `11` and `10.01` settles at `10`. This has always
+  been true; `0.3.0` is simply the first release to document it. If you
+  reconcile on exact amounts, read the note at the top of the
+  [README](README.md).
+- **`min_amount` should stay at its permissive `0.01` default.** DPay
+  enforces its own per-gateway minimum and maximum, and those are
+  configurable per pay method from the merchant dashboard, so any static
+  floor you set may reject amounts your account actually accepts.
+
 ## 0.1.0 → 0.2.0
 
 `0.2.0` is a breaking release. See [CHANGELOG.md](CHANGELOG.md) for the
