@@ -2,7 +2,7 @@
     "name": "aliagela-dev/dpay-php",
     "description": "Framework-agnostic PHP SDK for the DPay payment gateway (Libya) with provider abstractions for Edfali, MobiCash, Sadad, SaharaPay, YousrPay, MasrefyPay, and Moamalat. Optional Laravel bridge included.",
     "type": "library",
-    "license": "proprietary",
+    "license": "MIT",
     "keywords": ["dpay", "payment", "libya", "edfali", "mobicash", "sadad", "saharapay", "yousrpay", "masrefypay", "moamalat", "sdk"],
     "require": {
         "php": "^8.2",

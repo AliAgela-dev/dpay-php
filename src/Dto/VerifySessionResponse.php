@@ -8,7 +8,7 @@ namespace DPay\Dto;
  * Response from POST /payment/sessions/verify on success.
  *
  * verifySession returns `null` (not this object) on bad OTP / expired session,
- * matching the health-portal client behavior — callers can treat verification
+ * matching the original client behavior — callers can treat verification
  * as a boolean without catching exceptions for normal user errors.
  *
  * Schema: message, payment_id, status, amount, currency, pay_method, tx_id.

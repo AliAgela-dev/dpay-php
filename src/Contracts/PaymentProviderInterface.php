@@ -9,7 +9,7 @@ use DPay\Dto\PaymentField;
 /**
  * Contract every payment provider in the SDK implements.
  *
- * Ported verbatim from the health-portal implementation at
+ * Ported verbatim from the original production implementation at
  *   app/Services/Payment/Contracts/PaymentProviderInterface.php
  * so host applications can swap their existing imports for this namespace
  * without changing call sites.
@@ -29,7 +29,7 @@ interface PaymentProviderInterface
     /**
      * Relative path to the provider's logo image.
      *
-     * In the health-portal layout this returned paths under `public/`
+     * In the original app's layout this returned paths under `public/`
      * (e.g. "images/payment-methods/edfali.svg"). The SDK keeps the same
      * shape; the Laravel bridge publishes the bundled SVGs into
      * `public/vendor/dpay/` so the URL works out of the box.

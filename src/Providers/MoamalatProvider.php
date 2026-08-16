@@ -19,7 +19,7 @@ use DPay\Dto\PaymentField;
  *   - verifyOtp ignores the OTP parameter and polls getSession,
  *     returning true once the status is 'paid'.
  *
- * Default requiredFields() is [] — the health-portal seeder includes a
+ * Default requiredFields() is [] — the original seeder includes a
  * 16-digit card field for legacy reasons, but the provider never reads
  * it. Hosts that want to keep collecting that field client-side can
  * override via the constructor or Laravel config.

@@ -14,7 +14,7 @@ use InvalidArgumentException;
  *
  * Use the named constructors PaymentField::phoneNumber() and
  * PaymentField::cardNumber() for the common defaults — they ship en+ar
- * labels and placeholders matching the health-portal seeder shape.
+ * labels and placeholders matching the original seeder shape.
  */
 final class PaymentField
 {
@@ -50,7 +50,7 @@ final class PaymentField
     }
 
     /**
-     * Libyan mobile-number field. Matches the health-portal default:
+     * Libyan mobile-number field. Matches the original default:
      *   regex /^09\d{8}$/, en+ar labels and placeholders, input type "tel".
      */
     public static function phoneNumber(
@@ -71,7 +71,7 @@ final class PaymentField
     }
 
     /**
-     * Card-number field with an exact digit count. Health-portal defaults:
+     * Card-number field with an exact digit count. Original defaults:
      *   7 digits for MobiCash/SaharaPay/YousrPay/MasrefyPay,
      *   16 digits for the legacy Moamalat card-link flow.
      */

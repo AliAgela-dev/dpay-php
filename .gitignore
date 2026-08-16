@@ -11,3 +11,6 @@ composer.lock
 !.env.example
 /tests/sandbox/.probe-ledger.json
 /tests/sandbox/.webhook-log.jsonl
+
+# Claude Code local agent artifacts (worktrees, session state)
+.claude/

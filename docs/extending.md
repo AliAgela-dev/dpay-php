@@ -15,7 +15,7 @@ with `GatewayManager`."
 
 ## Scenario 1 — a non-DPay provider (the Wallet pattern)
 
-This is the case in the health-portal: `WalletProvider` manages an
+A worked example: a `WalletProvider` that manages an
 internal balance, not a DPay session. The SDK doesn't ship it because
 the SDK has no concept of users or balances.
 
