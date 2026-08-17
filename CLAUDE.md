@@ -70,10 +70,14 @@ against Postman golden bodies. `/payments/filter` is a partial exception:
 `POST` hits a real route (`405`, naming it) while `GET` on the identical
 URL 404s — a routing-order bug on DPay's side, not ours to work around.
 
-`VerifySessionResponse` maps only the flat legacy fields — the spec's
-nested `payment` object, `receipt_url`, `system_reference`,
-`network_reference`, `paid_through` and `payer_account` are reachable only
-via `->raw`.
+`VerifySessionResponse` now maps the spec's nested `payment` object (as
+`DPay\Dto\Payment`) and `receipt_url`, so `system_reference`,
+`network_reference`, `paid_through` and `payer_account` are typed rather
+than `->raw`-only. `GetSessionResponse` likewise gained `txId` and
+`paymentLink`, both of which appear in every live response but in neither
+of the spec's minimal examples — a reminder that the spec examples are
+narrower than what the gateway actually sends, and `->raw` is worth
+diffing against the DTOs whenever you touch a response shape.
 
 ## Live verification status (full run 2026-08-16/17)
 
