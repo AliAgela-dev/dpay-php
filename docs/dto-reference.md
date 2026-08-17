@@ -91,10 +91,12 @@ bad OTP / expired / not-found.
 | `message` | `string` | DPay's human-readable success message. |
 | `paymentId` | `int` | DPay's internal payment ID (different from `sessionId`). |
 | `status` | `SessionStatus` | Should be `PAID` if you got the object at all. |
-| `amount` | `float` | Settled amount. |
-| `currency` | `string` | |
+| `amount` | `float` | Settled amount — the rounded figure, see the note under `OpenSessionResponse`. |
+| `currency` | `string` | DPay does **not** send this at the top level; it is read from the nested `payment` object, falling back to `LYD`. |
 | `payMethod` | `string` | |
 | `txId` | `string` | DPay transaction ID — what you log / display to the user. |
+| `receiptUrl` | `?string` | Hosted receipt, when DPay issues one. |
+| `payment` | `?Payment` | The nested payment record — see [`Payment`](#daypaydtopayment) below. Null when DPay omits it. |
 | `raw` | `array` | |
 
 **Methods:** `isPaid(): bool`, `toArray(): array`.
@@ -109,16 +111,47 @@ Returned by `getSession()`. Used by Moamalat for status polling.
 |---|---|---|
 | `sessionId` | `int` | |
 | `status` | `SessionStatus` | The lifecycle stage. |
-| `amount` | `float` | |
-| `currency` | `string` | |
+| `amount` | `float` | The **settled** figure once paid — DPay's rounded value, not what you requested. Your original is in `data.original_amount`. |
+| `currency` | `string` | DPay does not return this; it defaults to `LYD`. |
 | `payMethod` | `string` | |
-| `expiredAt` | `string` | |
-| `data` | `mixed` | |
+| `expiredAt` | `string` | ISO-8601. 10 minutes from open for Moamalat/Sadad, 15 otherwise. |
+| `txId` | `string` | Gateway transaction reference — what you reconcile against. Absent from the spec's minimal example but present in **every** live response. `''` when absent. |
+| `paymentLink` | `?string` | Moamalat's hosted payment page; how that flow is resumed. Null on other gateways. |
+| `data` | `mixed` | Your merchant metadata, **with DPay's `fee_amount` / `fee_percent` / `original_amount` merged in**. |
 | `raw` | `array` | |
 
 **Methods:** `isPaid(): bool`, `toArray(): array`.
 
 ---
+
+## `DPay\Dto\Payment`
+
+The nested `payment` object on a verify response, exposed as
+`VerifySessionResponse::$payment`. **This is where the card-rail
+reconciliation fields live** — previously reachable only through `->raw`.
+
+| Property | Type | Notes |
+|---|---|---|
+| `id` | `int` | DPay's payment record ID. |
+| `paymentSessionId` | `int` | Links back to the session. |
+| `amount` | `float` | |
+| `currency` | `string` | Defaults to `LYD`. |
+| `status` | `SessionStatus` | The payment record's own status. DPay uses a **different vocabulary** here (`completed`), so this degrades to `UNKNOWN` — read `VerifySessionResponse::$status` for the session's lifecycle stage. |
+| `payMethod` | `string` | |
+| `txId` | `string` | |
+| `systemReference` | `?string` | |
+| `networkReference` | `?string` | |
+| `paidThrough` | `?string` | Card scheme, e.g. `Visa`. |
+| `payerAccount` | `?string` | Masked account, e.g. `****1234`. |
+| `createdAt` | `string` | |
+| `userId` / `companyId` | `?int` | DPay-internal. |
+| `raw` | `array` | |
+
+> The four reference fields are `?string` deliberately. Every sandbox
+> delivery we captured had them null, and the official examples show them
+> populated only on Moamalat (card) payments. **Wallet and bank gateways
+> leaving them null is correct behaviour, not a gap** — but note that means
+> the populated case has never been verified first-hand.
 
 ## `DPay\Dto\PayMethod`
 

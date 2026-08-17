@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`DPay\Dto\Payment`** — the nested `payment` object from a verify
+  response, now typed and exposed as `VerifySessionResponse::$payment`.
+  This is where DPay puts the card-rail reconciliation fields
+  (`system_reference`, `network_reference`, `paid_through`,
+  `payer_account`), which were previously reachable only through `->raw`.
+- `VerifySessionResponse::$receiptUrl`.
+- `GetSessionResponse::$txId` and `$paymentLink`. Neither appears in the
+  spec's minimal example, but **both are in every live response** — `tx_id`
+  is the reconciliation reference and `payment_link` is how the Moamalat
+  flow is resumed. Found by diffing the DTOs against captured payloads.
+
 - **`DPay\Client\PayMethodsClient` and `DPay\Dto\PayMethod`** — read
   `GET /pay-methods`, DPay's live per-merchant gateway list: `fee`,
   `min_deposit`, `max_deposit`, `active` and `logo_url`. The list is fetched
@@ -37,6 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DPay::payMethods()`.
 
 ### Fixed
+- **`VerifySessionResponse::$currency` was a fabricated default.** DPay does
+  not send `currency` at the top level of a verify response — it lives on
+  the nested payment object — so the DTO always fell back to a hardcoded
+  `LYD` and presented an SDK guess as gateway data. It now reads the nested
+  value when present, falling back only when nothing supplies one.
+
 - **`docs/providers.md` documented the wrong card schema for the three bank
   gateways.** It claimed SaharaPay, YousrPay and MasrefyPay use
   `cardNumber(digits: 7)`; they have used `bankCardNumber()`
@@ -46,6 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   MobiCash correctly stays 7-only.
 
 ### Changed
+- **Constructor parameter positions shifted on `GetSessionResponse` and
+  `VerifySessionResponse`.** The new properties were inserted before `raw`
+  rather than appended, so *positional* construction of these DTOs would now
+  bind arguments differently. Nothing in the SDK does that — both are built
+  via `fromArray()` throughout — and making this change before `1.0.0` is
+  precisely when it is allowed. Named arguments and `fromArray()` are
+  unaffected.
+
 - Published to Packagist as `aliagela-dev/dpay-php`. Install is now a plain
   `composer require` — the VCS `repositories` block is no longer needed, and
   the README documents that Guzzle is a separate install only if you want

@@ -19,6 +19,17 @@ final class GetSessionResponse
         public readonly string $currency,
         public readonly string $payMethod,
         public readonly string $expiredAt,
+        /**
+         * The gateway transaction reference. Absent from the spec's minimal
+         * example but present in every live response we captured, and it is
+         * what you reconcile against.
+         */
+        public readonly string $txId = '',
+        /**
+         * Moamalat's hosted payment page. Present on a Moamalat session and
+         * how that flow is resumed; null elsewhere.
+         */
+        public readonly ?string $paymentLink = null,
         public readonly mixed $data = null,
         /** @var array<string, mixed> */
         public readonly array $raw = [],
@@ -36,6 +47,10 @@ final class GetSessionResponse
             currency: (string) ($body['currency'] ?? 'LYD'),
             payMethod: (string) ($body['pay_method'] ?? ''),
             expiredAt: (string) ($body['expired_at'] ?? ''),
+            txId: isset($body['tx_id']) && is_scalar($body['tx_id']) ? (string) $body['tx_id'] : '',
+            paymentLink: isset($body['payment_link']) && is_scalar($body['payment_link'])
+                ? (string) $body['payment_link']
+                : null,
             data: $body['data'] ?? null,
             raw: $body,
         );
