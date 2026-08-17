@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `aliagela-dev/dpay-php` — a framework-agnostic PHP 8.2+ SDK for the DPay payment
 gateway (Libya), with an optional Laravel bridge. MIT-licensed open source,
-not yet on Packagist (installed via Composer VCS repository), PSR-4 under
+published on Packagist as `aliagela-dev/dpay-php`, PSR-4 under
 `DPay\` → `src/`.
 
 The SDK was reverse-engineered from a production Laravel app (referred to

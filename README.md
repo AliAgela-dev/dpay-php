@@ -1,5 +1,10 @@
 # dpay-php
 
+[![Packagist Version](https://img.shields.io/packagist/v/aliagela-dev/dpay-php.svg)](https://packagist.org/packages/aliagela-dev/dpay-php)
+[![PHP Version](https://img.shields.io/packagist/dependency-v/aliagela-dev/dpay-php/php.svg)](https://packagist.org/packages/aliagela-dev/dpay-php)
+[![CI](https://github.com/AliAgela-dev/dpay-php/actions/workflows/ci.yml/badge.svg)](https://github.com/AliAgela-dev/dpay-php/actions/workflows/ci.yml)
+[![License](https://img.shields.io/packagist/l/aliagela-dev/dpay-php.svg)](LICENSE)
+
 Framework-agnostic PHP SDK for the **DPay** payment gateway (Libya), with
 provider abstractions for Edfali, MobiCash, Sadad, SaharaPay, YousrPay,
 MasrefyPay, and Moamalat. Ships an optional Laravel bridge.
@@ -59,22 +64,20 @@ Full detail in [docs/troubleshooting.md](docs/troubleshooting.md) and
 
 ## Install
 
-Not yet published to Packagist, so add the repository explicitly:
-
-```json
-{
-    "repositories": [
-        { "type": "vcs", "url": "https://github.com/AliAgela-dev/dpay-php.git" }
-    ],
-    "require": {
-        "aliagela-dev/dpay-php": "^0.3"
-    }
-}
-```
-
 ```bash
 composer require aliagela-dev/dpay-php
 ```
+
+That pulls the SDK core only. For the zero-config `DPayClientFactory` path
+you also need a PSR-18 client and PSR-17 factories — Guzzle covers both:
+
+```bash
+composer require guzzlehttp/guzzle
+```
+
+Skip that if your project already provides its own PSR-18/17
+implementations; pass them to `DPayClientFactory::create()` (or construct
+`Transport` yourself) and Guzzle is never needed.
 
 MIT licensed — see [LICENSE](LICENSE). Contributions welcome:
 [CONTRIBUTING.md](CONTRIBUTING.md). Security issues go through
