@@ -24,6 +24,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Validate amounts against DPay's live per-gateway limits
+    |--------------------------------------------------------------------------
+    |
+    | Off by default. When enabled, openSession() checks the amount against
+    | GET /pay-methods (min_deposit / max_deposit / active) before opening a
+    | session, so an out-of-range amount is refused locally with a clear
+    | message instead of by the gateway.
+    |
+    | Those limits are configured per pay method from DPay's dashboard and
+    | differ between merchants, which is why min_amount above stays a
+    | permissive local floor rather than trying to encode them.
+    |
+    | The list is fetched once and memoised, so this costs one extra call per
+    | container lifetime — not one per payment. If the lookup fails the
+    | payment still proceeds: DPay enforces these limits server-side anyway,
+    | and an outage on a convenience endpoint should not block revenue.
+    |
+    */
+    'validate_against_live_limits' => (bool) env('DPAY_VALIDATE_LIVE_LIMITS', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Payment Gateways
     |--------------------------------------------------------------------------
     |

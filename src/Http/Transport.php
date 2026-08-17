@@ -64,6 +64,29 @@ final class Transport
     }
 
     /**
+     * Perform a request whose successful body is a top-level JSON **array**
+     * rather than an object — `GET /pay-methods` is the documented case.
+     *
+     * Exists because request() is typed `array<string, mixed>`, which would
+     * be a lie for a list response and would make PHPStan complain at every
+     * call site. Error mapping is identical; only the success shape differs.
+     *
+     * A non-list success body (say DPay wraps it in an envelope one day)
+     * yields an empty list rather than something a caller would iterate
+     * blindly.
+     *
+     * @param  array<string, mixed>|null  $body
+     * @param  array<string, string>  $headers
+     * @return list<mixed>
+     */
+    public function requestList(string $method, string $path, ?array $body = null, array $headers = []): array
+    {
+        $decoded = $this->request($method, $path, $body, $headers);
+
+        return array_is_list($decoded) ? $decoded : [];
+    }
+
+    /**
      * Perform a request, returning null on any non-2xx instead of throwing.
      *
      * Used by verifySession, where a wrong OTP is an ordinary user error

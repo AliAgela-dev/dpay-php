@@ -84,6 +84,36 @@ final class TransportTest extends TestCase
         self::assertNull($this->transport($http)->attempt('POST', '/verify', ['otp' => '0000']));
     }
 
+    public function test_request_list_returns_a_bare_json_array(): void
+    {
+        // GET /pay-methods responds with a top-level JSON array, not an
+        // object — request() is typed array<string, mixed> and would be
+        // lying about that shape.
+        $http = (new FakeHttpClient())->queueJson(200, [['slug' => 'edfali'], ['slug' => 'mobicash']]);
+
+        $body = $this->transport($http)->requestList('GET', '/pay-methods');
+
+        self::assertCount(2, $body);
+        self::assertSame('edfali', $body[0]['slug']);
+    }
+
+    public function test_request_list_maps_errors_exactly_like_request(): void
+    {
+        $http = (new FakeHttpClient())->queueJson(401, ['message' => 'Invalid sandbox API token.']);
+
+        $this->expectException(DPayAuthException::class);
+        $this->transport($http)->requestList('GET', '/pay-methods');
+    }
+
+    public function test_request_list_returns_empty_when_the_body_is_an_object_not_a_list(): void
+    {
+        // Defensive: if DPay ever wraps the list in an envelope, callers get
+        // an empty list rather than a malformed one they'd iterate blindly.
+        $http = (new FakeHttpClient())->queueJson(200, ['data' => [['slug' => 'edfali']]]);
+
+        self::assertSame([], $this->transport($http)->requestList('GET', '/pay-methods'));
+    }
+
     public function test_403_maps_to_auth_exception_just_like_401(): void
     {
         $http = (new FakeHttpClient())->queueJson(403, ['message' => 'This action is unauthorized.']);

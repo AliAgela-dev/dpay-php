@@ -120,6 +120,53 @@ Returned by `getSession()`. Used by Moamalat for status polling.
 
 ---
 
+## `DPay\Dto\PayMethod`
+
+One entry from `GET /pay-methods`, returned by
+[`PayMethodsClient`](#daypay-clientpaymethodsclient). DPay documents this as
+*"all active payment methods with your merchant-specific fee overrides
+applied"* — so every numeric field here is **per-merchant**, configured from
+DPay's dashboard, and cannot be hardcoded by any SDK.
+
+| Property | Type | Notes |
+|---|---|---|
+| `name` | `string` | Display name, e.g. `EDFali`. |
+| `slug` | `string` | The `pay_method` value, e.g. `edfali`. Entries without one are dropped. |
+| `active` | `bool` | Whether DPay has this gateway enabled for your account. |
+| `fee` | `float` | **A percentage**, e.g. `2.5` for 2.5% — not an absolute amount. Same meaning as `OpenSessionResponse::$fee`. |
+| `minDeposit` | `float` | Minimum accepted amount. Normalised to float; DPay sends it as a JSON integer. |
+| `maxDeposit` | `float` | Maximum accepted amount. |
+| `logoUrl` | `?string` | Absolute URL to the gateway's SVG. Upstream-authoritative — prefer it over the bundled logos. |
+| `icon` | `?string` | Deprecated upstream in favour of `logoUrl`; still sent, so still mapped. |
+| `raw` | `array` | The untouched entry. |
+
+**Methods:** `static fromArray(array): self` · `toArray(): array`.
+
+Absent or non-scalar values degrade rather than throw — a missing `name`
+becomes `''`, a missing limit becomes `0.0`.
+
+## `DPay\Client\PayMethodsClient`
+
+```php
+$methods = $payMethods->list();          // array<string, PayMethod>, keyed by slug
+$edfali  = $payMethods->find('edfali');  // ?PayMethod — null if DPay doesn't list it
+$payMethods->refresh();                  // drop the memoised list
+```
+
+**The list is fetched once and memoised for the instance's lifetime.** The
+values change only when someone edits the dashboard, and the alternative is
+a network round-trip per lookup. In Laravel it's bound as a singleton for
+the same reason — `DPay::payMethods()`.
+
+Errors are **not** swallowed here: a failed lookup throws, exactly like any
+other client call. Whether that should block a payment is a policy decision,
+and it lives in `DPayClient` (which fails open) rather than being hidden in
+this class.
+
+`find()` returning `null` is not an error — it means DPay doesn't list that
+gateway for your account, which is precisely what Sadad looks like until
+DPay enables it.
+
 ## `DPay\Dto\SessionStatus` (enum)
 
 Lifecycle states. Backed by lowercase strings.

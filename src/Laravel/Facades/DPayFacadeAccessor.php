@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DPay\Laravel\Facades;
 
 use DPay\Client\DPayClientInterface;
+use DPay\Client\PayMethodsClient;
 use DPay\GatewayManager;
 use Illuminate\Contracts\Container\Container;
 
@@ -20,6 +21,7 @@ class DPayFacadeAccessor
     public function __construct(
         private readonly DPayClientInterface $client,
         private readonly GatewayManager $gateways,
+        private readonly PayMethodsClient $payMethods,
     ) {}
 
     public static function bind(Container $container): void
@@ -27,6 +29,7 @@ class DPayFacadeAccessor
         $container->singleton(self::class, fn (Container $c) => new self(
             client: $c->make(DPayClientInterface::class),
             gateways: $c->make(GatewayManager::class),
+            payMethods: $c->make(PayMethodsClient::class),
         ));
     }
 
@@ -43,6 +46,18 @@ class DPayFacadeAccessor
     public function getSession(int $sessionId): \DPay\Dto\GetSessionResponse
     {
         return $this->client->getSession($sessionId);
+    }
+
+    /**
+     * The live pay-methods reader — DPay's per-merchant gateway list, with
+     * `fee`, `min_deposit`, `max_deposit`, `active` and `logo_url`.
+     *
+     * This is the container's shared singleton, so its memoised list is
+     * reused; it performs no HTTP until you actually call list() or find().
+     */
+    public function payMethods(): PayMethodsClient
+    {
+        return $this->payMethods;
     }
 
     public function provider(string $code): \DPay\Contracts\PaymentProviderInterface
