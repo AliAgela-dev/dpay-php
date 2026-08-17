@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`DPay\Client\PayMethodsClient` and `DPay\Dto\PayMethod`** — read
+  `GET /pay-methods`, DPay's live per-merchant gateway list: `fee`,
+  `min_deposit`, `max_deposit`, `active` and `logo_url`. The list is fetched
+  once and memoised for the client's lifetime, since those values change
+  only when someone edits the DPay dashboard. Closes the last open row in
+  `CLAUDE.md`'s spec-alignment table.
+- **Opt-in live-limit validation on `openSession()`.** `DPayClient` accepts
+  an optional `PayMethodsClient`; when supplied it refuses amounts outside
+  the gateway's live `min_deposit`/`max_deposit`, and refuses gateways DPay
+  reports as `active: false`, with messages naming the gateway and the
+  figure. Enable with `DPayClientFactory::create(..., validateAgainstLiveLimits: true)`
+  or `DPAY_VALIDATE_LIVE_LIMITS=true` in Laravel.
+
+  **Off by default, and fails open.** If the lookup itself fails, the
+  payment proceeds — DPay enforces these limits server-side anyway, so an
+  outage on a convenience endpoint must not block revenue. A gateway absent
+  from the list is likewise not treated as disabled: unknown is not the same
+  as `active: false`. Mock mode performs no lookup at all.
+- `Transport::requestList()` for endpoints whose success body is a top-level
+  JSON array rather than an object. `request()` is typed
+  `array<string, mixed>`, which would have been a lie for `/pay-methods`.
+- `DPayClientFactory::createTransport()`, so a host wanting only a
+  `PayMethodsClient` gets the same Guzzle/Nyholm fallbacks without
+  reimplementing them.
+- Laravel: `PayMethodsClient` bound as a singleton (a fresh instance per
+  resolution would defeat the memoisation) and exposed as
+  `DPay::payMethods()`.
+
 ### Fixed
 - **`docs/providers.md` documented the wrong card schema for the three bank
   gateways.** It claimed SaharaPay, YousrPay and MasrefyPay use

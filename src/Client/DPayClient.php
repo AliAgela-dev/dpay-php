@@ -9,6 +9,7 @@ use DPay\Dto\GetSessionResponse;
 use DPay\Dto\OpenSessionRequest;
 use DPay\Dto\OpenSessionResponse;
 use DPay\Dto\VerifySessionResponse;
+use DPay\Exceptions\DPayExceptionInterface;
 use DPay\Exceptions\DPayValidationException;
 use DPay\Http\Transport;
 use DPay\Support\MockTransport;
@@ -34,6 +35,13 @@ class DPayClient implements DPayClientInterface
         private readonly DPayConfig $config,
         private readonly Transport $transport,
         private readonly ?MockTransport $mockTransport = null,
+        /**
+         * Optional. When supplied, openSession() checks the amount against
+         * DPay's live per-gateway limits before opening a session. Omit it
+         * (the default) and behaviour is exactly as it was — this is
+         * additive, never a breaking change for existing callers.
+         */
+        private readonly ?PayMethodsClient $payMethods = null,
     ) {}
 
     public function openSession(OpenSessionRequest $request, ?string $idempotencyKey = null): OpenSessionResponse
@@ -48,6 +56,8 @@ class DPayClient implements DPayClientInterface
                 422,
             );
         }
+
+        $this->assertWithinLiveLimits($request);
 
         $headers = $idempotencyKey === null ? [] : ['Idempotency-Key' => $idempotencyKey];
 
@@ -79,5 +89,72 @@ class DPayClient implements DPayClientInterface
         return GetSessionResponse::fromArray(
             $this->transport->request('GET', "/payment/sessions/{$sessionId}"),
         );
+    }
+
+    /**
+     * Check the amount against DPay's live, per-merchant limits for this
+     * gateway — but only when a PayMethodsClient was supplied.
+     *
+     * **Fails open by design.** If the lookup itself fails, the payment
+     * proceeds. This endpoint is a convenience, and letting an outage on it
+     * block real payments would trade revenue for a check DPay performs
+     * server-side anyway — the caller simply gets DPay's rejection instead
+     * of a faster local one, which is exactly the pre-v0.4.0 behaviour.
+     * Transport has already logged the failure by the time we swallow it.
+     *
+     * A gateway absent from the list is likewise not an error: unknown is
+     * not the same as disabled, and only an explicit `active: false` is
+     * treated as a refusal.
+     */
+    private function assertWithinLiveLimits(OpenSessionRequest $request): void
+    {
+        if ($this->payMethods === null) {
+            return;
+        }
+
+        try {
+            $method = $this->payMethods->find($request->payMethod);
+        } catch (DPayExceptionInterface) {
+            return;
+        }
+
+        if ($method === null) {
+            return;
+        }
+
+        if (! $method->active) {
+            throw new DPayValidationException(
+                sprintf(
+                    'DPay reports the "%s" gateway as not enabled for this merchant account. '
+                    .'Enable it from DPay\'s dashboard, or use a different pay method.',
+                    $method->slug,
+                ),
+                422,
+            );
+        }
+
+        if ($request->amount < $method->minDeposit) {
+            throw new DPayValidationException(
+                sprintf(
+                    'Amount %s is below DPay\'s minimum deposit of %s for the "%s" gateway.',
+                    $request->amount,
+                    $method->minDeposit,
+                    $method->slug,
+                ),
+                422,
+            );
+        }
+
+        if ($request->amount > $method->maxDeposit) {
+            throw new DPayValidationException(
+                sprintf(
+                    'Amount %s exceeds DPay\'s maximum deposit of %s for the "%s" gateway.',
+                    $request->amount,
+                    $method->maxDeposit,
+                    $method->slug,
+                ),
+                422,
+            );
+        }
     }
 }

@@ -41,8 +41,18 @@ none of them is the settled figure. Read that from `getSession()` or the
 by the merchant.** They're enforced server-side and rejected with
 `DPayValidationException`. This SDK's `min_amount` deliberately defaults to a
 permissive `0.01` and lets DPay be the authority — no static default could be
-right. The SDK cannot currently read these limits (DPay's `GET /pay-methods`
-is not yet implemented here), so check your dashboard.
+right. **The SDK can read them for you** — `PayMethodsClient` fetches the
+live list, and you can opt into having `openSession()` enforce it:
+
+```php
+$client = DPayClientFactory::create($config, validateAgainstLiveLimits: true);
+// or, in Laravel: DPAY_VALIDATE_LIVE_LIMITS=true
+```
+
+Off by default. It costs one extra call per client lifetime (the list is
+memoised, not refetched per payment) and **fails open** — if the lookup
+itself fails your payment still goes through, because DPay enforces these
+limits server-side regardless.
 
 **3. Your `data` object comes back with DPay's keys merged in** —
 `fee_amount`, `fee_percent`, `original_amount` on every payment, plus

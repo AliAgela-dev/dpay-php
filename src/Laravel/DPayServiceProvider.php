@@ -7,6 +7,7 @@ namespace DPay\Laravel;
 use DPay\Client\DPayClient;
 use DPay\Client\DPayClientFactory;
 use DPay\Client\DPayClientInterface;
+use DPay\Client\PayMethodsClient;
 use DPay\Config\DPayConfig;
 use DPay\Contracts\PaymentProviderInterface;
 use DPay\Dto\PaymentField;
@@ -50,7 +51,21 @@ class DPayServiceProvider extends ServiceProvider
             $config = $app->make(DPayConfig::class);
             $logger = $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null;
 
-            return DPayClientFactory::create($config, logger: $logger);
+            return DPayClientFactory::create(
+                $config,
+                logger: $logger,
+                validateAgainstLiveLimits: (bool) $app['config']->get('dpay.validate_against_live_limits', false),
+            );
+        });
+
+        // Singleton deliberately: PayMethodsClient memoises the gateway list
+        // for its lifetime, so a fresh instance per resolution would turn
+        // every lookup back into an HTTP call.
+        $this->app->singleton(PayMethodsClient::class, function (Container $app): PayMethodsClient {
+            $config = $app->make(DPayConfig::class);
+            $logger = $app->bound(LoggerInterface::class) ? $app->make(LoggerInterface::class) : null;
+
+            return new PayMethodsClient(DPayClientFactory::createTransport($config, logger: $logger));
         });
 
         $this->app->alias(DPayClientInterface::class, DPayClient::class);

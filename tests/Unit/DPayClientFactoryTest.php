@@ -8,6 +8,7 @@ use DPay\Client\DPayClient;
 use DPay\Client\DPayClientFactory;
 use DPay\Config\DPayConfig;
 use DPay\Dto\OpenSessionRequest;
+use DPay\Exceptions\DPayValidationException;
 use DPay\Support\MockTransport;
 use DPay\Tests\Unit\Support\FakeHttpClient;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -119,6 +120,50 @@ final class DPayClientFactoryTest extends TestCase
 
         self::assertGreaterThan(0, $response->sessionId);
         self::assertSame([], $http->sent, 'Mock mode must not perform any HTTP request.');
+    }
+
+    public function test_live_limit_validation_is_off_by_default(): void
+    {
+        $psr17 = new Psr17Factory();
+        // Only the openSession response is queued — a pay-methods lookup
+        // would hit an empty queue and throw.
+        $http = (new FakeHttpClient())->queueJson(200, [
+            'session_id' => 9, 'status' => 'pending', 'amount' => 50.0, 'currency' => 'LYD',
+            'fee' => 0.0, 'fee_amount' => 0.0, 'total' => 50.0,
+            'pay_method' => 'edfali', 'expired_at' => '2026-08-17T12:00:00Z',
+        ]);
+
+        $client = DPayClientFactory::create(
+            $this->config(),
+            httpClient: $http,
+            requestFactory: $psr17,
+            streamFactory: $psr17,
+        );
+
+        $client->openSession(new OpenSessionRequest(payMethod: 'edfali', amount: 50.0, customerMobile: '0912345678'));
+
+        self::assertCount(1, $http->sent);
+    }
+
+    public function test_validate_against_live_limits_wires_a_pay_methods_client(): void
+    {
+        $psr17 = new Psr17Factory();
+        $http = (new FakeHttpClient())->queueJson(200, [
+            ['slug' => 'edfali', 'active' => true, 'min_deposit' => 100, 'max_deposit' => 900],
+        ]);
+
+        $client = DPayClientFactory::create(
+            $this->config(),
+            httpClient: $http,
+            requestFactory: $psr17,
+            streamFactory: $psr17,
+            validateAgainstLiveLimits: true,
+        );
+
+        // 50 is below the live minimum of 100, so it must be refused locally
+        // — which only happens if the factory wired the lookup through.
+        $this->expectException(DPayValidationException::class);
+        $client->openSession(new OpenSessionRequest(payMethod: 'edfali', amount: 50.0, customerMobile: '0912345678'));
     }
 
     public function test_each_call_returns_an_independent_client(): void
