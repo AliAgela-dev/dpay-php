@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`docs/providers.md` documented the wrong card schema for the three bank
+  gateways.** It claimed SaharaPay, YousrPay and MasrefyPay use
+  `cardNumber(digits: 7)`; they have used `bankCardNumber()`
+  (`digitsOneOf: [7, 9]`) since v0.2.0. The page was missed by that
+  release's docs pass, so it told integrators that 9-digit cross-bank
+  OnePay numbers are invalid — the exact defect v0.2.0 fixed in code.
+  MobiCash correctly stays 7-only.
+
 ### Changed
 - Published to Packagist as `aliagela-dev/dpay-php`. Install is now a plain
   `composer require` — the VCS `repositories` block is no longer needed, and
