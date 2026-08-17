@@ -121,7 +121,10 @@ Card-based OTP, **with status-check support**. After `sendOtp` you can call
 `DPay::getSession($reference)` to inspect the live status instead of (or in
 addition to) verifying with an OTP.
 
-Default field schema: `[cardNumber(digits: 7)]`.
+Default field schema: `[bankCardNumber()]` — accepts a 7-digit same-bank
+card number **or** a 9-digit cross-bank number via OnePay
+(`digitsOneOf: [7, 9]`). An 8-digit value is rejected, which is why this
+isn't expressed as `digits_between:7,9`.
 
 ---
 
@@ -136,7 +139,7 @@ Default field schema: `[cardNumber(digits: 7)]`.
 | **`supportsStatusCheck`** | **true** |
 
 Same shape as SaharaPay. Card-based OTP with status check. Default schema
-`[cardNumber(digits: 7)]`.
+`[bankCardNumber()]` (`digitsOneOf: [7, 9]`).
 
 ---
 
@@ -150,7 +153,8 @@ Same shape as SaharaPay. Card-based OTP with status check. Default schema
 | `requiresOtp` | true |
 | **`supportsStatusCheck`** | **true** |
 
-Same shape as SaharaPay / YousrPay. Default schema `[cardNumber(digits: 7)]`.
+Same shape as SaharaPay / YousrPay. Default schema `[bankCardNumber()]`
+(`digitsOneOf: [7, 9]`).
 
 ---
 
@@ -202,9 +206,9 @@ No `customer_mobile`, no `card_number`. The user pays via the
 |---|---|---|
 | `edfali`     | `phone_number` (regex `/^09\d{8}$/`) | `customer_mobile` |
 | `mobicash`   | `card_number` (`digits:7`)           | `card_number`     |
-| `saharapay`  | `card_number` (`digits:7`)           | `card_number`     |
-| `yousrpay`   | `card_number` (`digits:7`)           | `card_number`     |
-| `masrefypay` | `card_number` (`digits:7`)           | `card_number`     |
+| `saharapay`  | `card_number` (`digitsOneOf: [7, 9]`) | `card_number`    |
+| `yousrpay`   | `card_number` (`digitsOneOf: [7, 9]`) | `card_number`    |
+| `masrefypay` | `card_number` (`digitsOneOf: [7, 9]`) | `card_number`    |
 | `sadad`      | `phone_number`, `birth_year`, `category` (optional) | `customer_mobile`, `birth_year`, `category` |
 | `moamalat`   | _(empty)_                            | _(none)_          |
 
