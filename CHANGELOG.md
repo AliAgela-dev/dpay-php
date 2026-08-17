@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Published to Packagist as `aliagela-dev/dpay-php`. Install is now a plain
+  `composer require` — the VCS `repositories` block is no longer needed, and
+  the README documents that Guzzle is a separate install only if you want
+  the zero-config `DPayClientFactory` path.
+
 ## [0.3.0] — 2026-08-16
 
 Relicensed under MIT, and the first release verified live against DPay's
