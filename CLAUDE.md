@@ -28,11 +28,24 @@ The core assumptions the SDK got **right**: base URL `https://dpay.ly/api`,
 `customer_mobile` / `card_number` request keys, and the `pending`/`paid` status
 strings.
 
+## Current state (2026-08-17)
+
+- **Released `v0.3.0`**, MIT, published on Packagist. Tags: `v0.1.0`,
+  `v0.2.0`, `v0.3.0`.
+- **208 tests / 426 assertions**, PHPStan level 8 clean. CI runs
+  `composer check` on PHP 8.2, 8.3 and 8.4.
+- **`main` is branch-protected**: PRs required, the three PHP checks must
+  pass, no force pushes, no deletion. Admins are exempt, so you *can* push
+  directly — don't, unless CI itself is what's broken.
+- Only `main` exists. Merged branches are deleted; squash-merging leaves the
+  original branch unrecognised as merged, and a lingering branch generates
+  duplicate PRs from GitHub's "Compare & pull request" banner.
+
 ## Spec alignment status
 
-Plans 1–3 (v0.2.0 work) closed every gap below except per-gateway limits.
-This table was last cross-checked against `src/` on 2026-07-28 — verify
-against the spec yourself before assuming a row is still accurate.
+Everything below is closed except per-gateway limits. Last cross-checked
+against `src/` on 2026-08-17 — verify against the spec yourself before
+assuming a row is still accurate.
 
 | Area | Official spec | Status |
 |---|---|---|
@@ -46,19 +59,54 @@ against the spec yourself before assuming a row is still accurate.
 | `Idempotency-Key` | Supported header on `sessions/open`; replays return the original session | ✅ SDK-side resolved. `DPayClient::openSession()` takes an optional `$idempotencyKey` and sends the header. Live-confirmed the sandbox itself doesn't honor replay correctly yet — that's a sandbox-side gap, not an SDK bug. See `SANDBOX-VALIDATION.md`. |
 | Per-gateway limits | `GET /api/pay-methods` returns live `fee`, `min_deposit`, `max_deposit` per gateway | ⚠️ **Still open, and now known to bite.** No `PayMethod` DTO, no `PayMethodsClient`. Live-confirmed 2026-08-16 that DPay enforces these server-side (Edfali on our sandbox merchant: min `5`, max `60000`) and that they are **merchant-configurable per pay method from DPay's dashboard**. That is precisely why `min_amount` must stay permissive at `0.01` — no static SDK default can be right, so DPay has to be the authority. Reading `/pay-methods` is the only correct fix. |
 
-A live sandbox check on 2026-07-28 found: `GET /api/sandbox/pay-methods`
-returns real per-gateway data today (200, all 9 gateways with
-`fee`/`min_deposit`/`max_deposit`/`enabled`) — building `PayMethodsClient`
-is unblocked. `/auth/me`, `/payments`, `/invoices` aren't deployed to
-sandbox yet (a branded 404 page, not a Laravel response — genuinely
-unrouted, not a permissions issue). `/payments/filter` is a partial
-exception: `POST` hits a real registered route (`405 Method Not Allowed`,
-naming the route explicitly) but `GET` to the identical URL falls through
-to the same branded 404 — looks like a routing-order bug on DPay's side,
-not something to work around here. `VerifySessionResponse` maps only the
-flat legacy fields — the spec's nested `payment` object, `receipt_url`,
-`system_reference`, `network_reference`, `paid_through`, and
-`payer_account` are reachable only via `->raw`.
+Unbuilt endpoints (`AuthClient`, `PaymentsClient`, `PayMethodsClient`,
+`InvoicesClient` and their DTOs) were deliberately deferred — the user's
+call, 2026-08-17. `GET /api/sandbox/pay-methods` returns real per-gateway
+data (all 9 gateways with `fee`/`min_deposit`/`max_deposit`/`enabled`), so
+`PayMethodsClient` is buildable and live-verifiable whenever it's wanted.
+`/auth/me`, `/payments` and `/invoices` are *not* routed on sandbox (a
+branded HTML 404, genuinely unrouted), so those three can only be verified
+against Postman golden bodies. `/payments/filter` is a partial exception:
+`POST` hits a real route (`405`, naming it) while `GET` on the identical
+URL 404s — a routing-order bug on DPay's side, not ours to work around.
+
+`VerifySessionResponse` maps only the flat legacy fields — the spec's
+nested `payment` object, `receipt_url`, `system_reference`,
+`network_reference`, `paid_through` and `payer_account` are reachable only
+via `->raw`.
+
+## Live verification status (full run 2026-08-16/17)
+
+The SDK has been exercised end-to-end against `https://dpay.ly/api/sandbox`,
+not just against a fake HTTP client. `SANDBOX-VALIDATION.md` is regenerated
+by the probe; `docs/sandbox-testing.md` holds the measured behaviour table.
+
+**Verified live:** session open/verify/getSession across 6 gateways ·
+wrong OTP returns `null` and the session survives a retry · decimal amounts
+· top-level `description` · 9-digit cross-bank cards on all three bank
+gateways · Moamalat driven to `paid` · every error mapping (401, 404, 422,
+429) · `min_deposit`/`max_deposit` enforcement · four webhook events
+(`payment.paid`, `payment.failed`, `payment.expired`, `webhook.test`)
+against real DPay-signed deliveries · statuses `pending`/`paid`/`failed`/
+`expired`.
+
+**Not verified, and why:**
+
+| Gap | Reason |
+|---|---|
+| `payment.refunded` / `payment.voided`, and `SessionStatus::VOIDED` | **Not triggerable by anyone.** Enumerating the official Postman collection shows no refund or void endpoint exists — both events are inbound-only and Moamalat-only. Don't go looking for a way to fire one. |
+| Sadad | Merchant-gated at DPay; needs them to enable it *and* publish a test wallet. |
+| `DPayNetworkException` | Needs a real transport failure. |
+| `VerifySessionResponse`'s reference fields | `system_reference`, `network_reference`, `paid_through`, `payer_account` were `null` in every sandbox delivery. The spec shows them populated only on Moamalat/production, so nulls on wallet and bank gateways look correct rather than broken. |
+| The Laravel bridge over the wire | `DPayWebhookController` has never received a real webhook — the live testing used the standalone receiver deliberately, to exercise the framework-agnostic core with nothing in between. |
+| Production | Everything was sandbox; every payload carried `live: false`. Moamalat especially differs: sandbox serves a two-button simulator, not a card LightBox, so the spec's Moamalat test cards are unusable there. |
+
+Measured DPay quirks worth knowing before you write a test that assumes
+otherwise: the rate limiter tolerated **35 consecutive unpaced calls** (docs
+long claimed 4–5); sessions expire in **10 minutes** for Moamalat/Sadad and
+15 otherwise (not the ~30 some docs claimed); and `payment.expired` arrives
+**~5 minutes after** `expired_at`, while `getSession()` reports `expired`
+immediately.
 
 ## Commands
 
@@ -149,7 +197,7 @@ facade exposes the whole surface.
 ## Behavioral contracts to preserve
 
 These are intentional and load-bearing — several exist to match the original
-original-implementation behaviour that host apps still depend on:
+implementation's behaviour that host apps still depend on:
 
 - **`verifySession()` returns `null`, it does not throw**, for wrong OTP / expired
   / not-found. Provider `verifyOtp()` therefore returns `false` for ordinary user
@@ -159,8 +207,8 @@ original-implementation behaviour that host apps still depend on:
   a session (default `minAmount` is `0.01`, matching the spec's documented
   minimum) and throws `DPayValidationException` if it's too low. There is
   no whole-number check — that was an SDK-imposed invariant inherited from
-  the original implementation and it contradicted the spec; Plan 1 removed it. Don't
-  reintroduce it.
+  the original implementation and it contradicted the spec; the v0.2.0 work
+  removed it. Don't reintroduce it.
   **The `0.01` default is deliberately permissive and should stay that way.**
   DPay enforces its own per-gateway min/max deposit server-side, and those
   are merchant-configurable from DPay's dashboard — so any static SDK floor
@@ -192,7 +240,7 @@ original-implementation behaviour that host apps still depend on:
 - **Unknown session statuses degrade to `SessionStatus::UNKNOWN`** rather than
   throwing, so a new gateway state doesn't crash callers.
 - HTTP status → exception mapping lives in one place, `Transport::buildException()`
-  (`src/Http/Transport.php`, extracted from `DPayClient` in Plan 1): 401/403 →
+  (`src/Http/Transport.php`, extracted from `DPayClient` during v0.2.0): 401/403 →
   `DPayAuthException`, 404 → `DPaySessionNotFoundException`, 429 →
   `DPayRateLimitException`, other 4xx → `DPayValidationException`, else
   `DPayException`. All extend `DPayException`.
@@ -203,13 +251,47 @@ PHPStan runs at **level 8** over `src/`, with `src/Laravel` excluded (see
 `phpstan.neon`) — the bridge needs container resolution and facade statics PHPStan
 can't follow without larastan. `phpunit.xml` excludes `src/Laravel` from `<source>`
 for the same reason. **The bridge is covered by runtime feature tests instead**
-(`tests/Feature/LaravelBridgeTest.php`, `ConfigOverrideTest.php`,
-`PaymentFieldRulesTest.php`) — if you change `src/Laravel`, a feature test is the
-only thing that will catch you.
+(`tests/Feature/`: `LaravelBridgeTest`, `ConfigOverrideTest`,
+`PaymentFieldRulesTest`, `DPayWebhookControllerTest`,
+`DPayWebhookRouteDisabledTest`) — if you change `src/Laravel`, a feature test
+is the only thing that will catch you.
 
 Unit tests use `tests/Unit/Support/FakeHttpClient.php`, a PSR-18 double with a FIFO
 response queue, a recorded request log, and a `throwOnNext` hook for exercising
 `DPayNetworkException`.
+
+**A test that passes the moment you write it deserves suspicion.** Several
+tests here were mutation-checked — the implementation was deliberately broken
+to confirm the test fails — and the commit messages record which mutation
+kills which test. Two worth knowing, because both guard behaviour that is
+easy to "simplify" away:
+
+- `DPayWebhookControllerTest::test_the_signature_is_verified_against_the_raw_bytes_not_a_reserialized_body`
+  — its fixture is built so a `json_decode`/`json_encode` round-trip *must*
+  change the bytes, and it asserts that premise up front so it cannot
+  silently stop proving anything.
+- `TransportTest`'s `errors`-property tests — removing the `is_array()`
+  guard in `buildException()` reproduces a real `TypeError`.
+
+## Live sandbox tooling (`tests/sandbox/`)
+
+Not PHPUnit, not in CI, needs real credentials. Copy `.env.example` to
+`.env` (gitignored) and `set -a; source .env; set +a`.
+
+- `probe.php` — paced, resumable, regenerates `SANDBOX-VALIDATION.md`.
+  Covers 10 provider scenarios plus three `error-*` scenarios that assert
+  which exception a real DPay failure maps to.
+- `webhook-receiver.php` — standalone receiver for verifying real
+  deliveries. Exercises `WebhookVerifier` + `WebhookEventFactory` directly,
+  with no framework in between. Expose it over HTTPS (a tunnel works) and
+  register the URL in DPay's dashboard. It answers **400** on a bad
+  signature where `DPayWebhookController` answers **401** — deliberate, and
+  documented in its docblock. Don't harmonise them.
+
+`ProbeRunner::writeReport()` **overwrites `SANDBOX-VALIDATION.md` entirely**,
+so any prose that belongs in that file lives in the generator's `PREAMBLE`
+constant. Hand-written text added to the `.md` directly is destroyed on the
+next run — this already happened once.
 
 ## Keeping docs in sync
 
@@ -217,11 +299,35 @@ Provider or test changes ripple into more files than usual here. When you
 add/remove a provider or change test counts, check: `README.md` (provider
 table, project layout, test counts), `composer.json` (`description` +
 `keywords`), `CHANGELOG.md`, `src/Laravel/config/dpay.php`, and every file
-under `docs/` — a 2026-07-28 audit found four `docs/*.md` files
-(dto-reference, troubleshooting, sandbox-testing, plus a partial miss in
-configuration) that had gone untouched since before Plan 1 despite `src/`
-changing in 77 files. Don't assume a doc is current just because it reads
-confidently.
+under `docs/`.
+
+**Docs drift here has twice reached the point of being actively wrong, so
+verify rather than assume:**
+
+- A 2026-07-28 audit found four `docs/*.md` files (dto-reference,
+  troubleshooting, sandbox-testing, plus a partial miss in configuration)
+  untouched since before the v0.2.0 work despite `src/` changing in 77
+  files.
+- Worse, on 2026-08-17 `docs/providers.md` was still telling readers that
+  SaharaPay/YousrPay/MasrefyPay use `cardNumber(digits: 7)` — months after
+  they moved to `bankCardNumber()` (`digitsOneOf: [7, 9]`). The published
+  docs were instructing integrators to reject valid 9-digit cross-bank
+  OnePay cards, i.e. re-creating in documentation the exact defect v0.2.0
+  fixed in code. **Check claims against `src/`, not against how confident
+  the prose sounds.**
+
+Cheap way to catch the common class of this:
+
+```bash
+composer test 2>&1 | grep -E "^OK \("        # then grep the docs for stale counts
+git ls-files | xargs grep -n "digits: 7"     # schema claims vs src/Providers/
+```
+
+**Beware `grep` in this environment.** On the maintainer's machine `grep`
+resolves to a shell function wrapping `ugrep`, which has silently returned
+*zero matches* for files that plainly contained the string — long enough to
+produce a confident, wrong "all clean" report. When a grep result is the
+evidence for a claim, confirm with `/usr/bin/grep` or a second method.
 
 **Sadad** is shipped (`SadadProvider`, `src/Providers/SadadProvider.php`),
 disabled by default via `PAYMENT_GATEWAY_SADAD_ENABLED=false` — it's
