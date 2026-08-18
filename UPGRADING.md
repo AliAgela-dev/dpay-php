@@ -1,5 +1,50 @@
 # Upgrading
 
+## 0.3.0 → 0.4.0
+
+**Almost certainly no code changes required.** `0.4.0` is additive apart
+from one behaviour change, which only affects you if you render logos from
+`logo()`.
+
+### `logo()` now returns a path that resolves
+
+`PaymentProviderInterface::logo()` returned `images/payment-methods/<code>.svg`,
+which matched nothing the Laravel bridge published. It now returns
+`vendor/dpay/<code>.svg`, matching the `dpay-logos` publish target exactly.
+
+**If you were working around it** — building `asset('vendor/dpay/'.$code.'.svg')`
+by hand, as our own docs did — you can now just call the method:
+
+```php
+'logo' => asset($provider->logo()),
+```
+
+**If you were mapping `images/payment-methods/` to your own asset path**,
+that mapping will stop matching. Either drop it and publish the bundled
+SVGs (`php artisan vendor:publish --tag=dpay-logos`), or keep serving your
+own assets and ignore `logo()`.
+
+**If you implement `PaymentProviderInterface` yourself**, nothing forces a
+change — return whatever path your app serves.
+
+Also note `SadadProvider` advertised a `sadad.svg` that was never bundled;
+the file now exists, so re-run the publish command to pick it up.
+
+### DTO constructor parameter positions shifted
+
+`GetSessionResponse` and `VerifySessionResponse` gained properties, inserted
+before `raw` rather than appended. **Named arguments and `fromArray()` are
+unaffected** — which is how the SDK builds them everywhere. Only *positional*
+construction of these two DTOs would bind differently.
+
+### Everything else is additive
+
+`PayMethodsClient`, `PayMethod`, `Payment`, `Transport::requestList()`,
+`DPayClientFactory::createTransport()`, and the new response properties are
+all new surface. Live-limit validation on `openSession()` is **off by
+default** — you opt in with `validateAgainstLiveLimits: true` or
+`DPAY_VALIDATE_LIVE_LIMITS=true`.
+
 ## 0.2.0 → 0.3.0
 
 **No code changes required.** `0.3.0` contains no breaking API changes — it

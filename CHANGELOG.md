@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-17
+
+Reads DPay's live per-gateway limits, maps the response fields the DTOs were
+dropping, and points `logo()` at a path that actually resolves. Closes the
+last open row in the spec-alignment table, and settles the two code
+questions that were blocking `1.0.0`.
+
 ### Added
 - **`DPay\Dto\Payment`** — the nested `payment` object from a verify
   response, now typed and exposed as `VerifySessionResponse::$payment`.
@@ -370,7 +377,8 @@ for the full report.
 - **Sandbox `tx_id` is `sb_txn_<hex>`.** Production format may differ;
   the SDK doesn't parse it, so no impact expected.
 
-[unreleased]: https://github.com/AliAgela-dev/dpay-php/compare/v0.3.0...HEAD
+[unreleased]: https://github.com/AliAgela-dev/dpay-php/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/AliAgela-dev/dpay-php/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/AliAgela-dev/dpay-php/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/AliAgela-dev/dpay-php/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/AliAgela-dev/dpay-php/releases/tag/v0.1.0
