@@ -27,12 +27,21 @@ interface PaymentProviderInterface
     public function displayName(): string;
 
     /**
-     * Relative path to the provider's logo image.
+     * Path to the provider's bundled logo, relative to the web root —
+     * e.g. "vendor/dpay/edfali.svg".
      *
-     * In the original app's layout this returned paths under `public/`
-     * (e.g. "images/payment-methods/edfali.svg"). The SDK keeps the same
-     * shape; the Laravel bridge publishes the bundled SVGs into
-     * `public/vendor/dpay/` so the URL works out of the box.
+     * This matches exactly where DPayServiceProvider publishes the bundled
+     * SVGs (`php artisan vendor:publish --tag=dpay-logos`), so
+     * `asset($provider->logo())` resolves without any host-side mapping.
+     *
+     * Until v0.4.0 this returned "images/payment-methods/<code>.svg", which
+     * matched nothing the bridge published — callers had to rebuild the path
+     * by hand. If you implement this interface yourself, return a path your
+     * own app actually serves.
+     *
+     * For the upstream-authoritative logo instead of the bundled one, read
+     * `PayMethod::$logoUrl` from PayMethodsClient — an absolute URL that
+     * tracks DPay's own branding.
      */
     public function logo(): string;
 

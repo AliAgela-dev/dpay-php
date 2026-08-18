@@ -26,7 +26,7 @@ final class MobiCashProvider extends AbstractDPayProvider
 
     public function logo(): string
     {
-        return 'images/payment-methods/mobicash.svg';
+        return 'vendor/dpay/mobicash.svg';
     }
 
     protected function defaultFields(): array

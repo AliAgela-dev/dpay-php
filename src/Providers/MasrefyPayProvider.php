@@ -26,7 +26,7 @@ final class MasrefyPayProvider extends AbstractDPayProvider
 
     public function logo(): string
     {
-        return 'images/payment-methods/masrefypay.svg';
+        return 'vendor/dpay/masrefypay.svg';
     }
 
     public function supportsStatusCheck(): bool

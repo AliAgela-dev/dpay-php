@@ -42,7 +42,7 @@ final class SadadProviderTest extends TestCase
 
         self::assertSame('sadad', $provider->code());
         self::assertSame('Sadad', $provider->displayName());
-        self::assertSame('images/payment-methods/sadad.svg', $provider->logo());
+        self::assertSame('vendor/dpay/sadad.svg', $provider->logo());
     }
 
     public function test_default_fields_are_phone_birth_year_and_category(): void

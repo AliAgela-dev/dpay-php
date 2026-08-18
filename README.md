@@ -238,7 +238,7 @@ Sample shape:
   {
     "code": "edfali",
     "name": "Edfali",
-    "logo": "images/payment-methods/edfali.svg",
+    "logo": "vendor/dpay/edfali.svg",
     "requires_otp": true,
     "supports_status_check": false,
     "supports_refund": false,
@@ -317,7 +317,7 @@ composer install
 vendor/bin/phpunit
 ```
 
-208 tests, 426 assertions. Unit tests use a fake PSR-18 client; the Laravel
+269 tests, 531 assertions. Unit tests use a fake PSR-18 client; the Laravel
 feature test uses Orchestra Testbench.
 
 ---

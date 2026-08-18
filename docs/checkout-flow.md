@@ -70,7 +70,7 @@ use DPay\Laravel\Facades\DPay;
 return collect(DPay::listEnabled())->map(fn (string $code) => [
     'code'         => $code,
     'name'         => DPay::provider($code)->displayName(),
-    'logo'         => asset('vendor/dpay/'.$code.'.svg'),
+    'logo'         => asset(DPay::provider($code)->logo()),
     'requires_otp' => DPay::requiresOtp($code),
 ]);
 ```

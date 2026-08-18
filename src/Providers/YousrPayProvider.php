@@ -26,7 +26,7 @@ final class YousrPayProvider extends AbstractDPayProvider
 
     public function logo(): string
     {
-        return 'images/payment-methods/yousrpay.svg';
+        return 'vendor/dpay/yousrpay.svg';
     }
 
     public function supportsStatusCheck(): bool
