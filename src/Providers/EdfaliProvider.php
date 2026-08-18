@@ -25,7 +25,7 @@ final class EdfaliProvider extends AbstractDPayProvider
 
     public function logo(): string
     {
-        return 'images/payment-methods/edfali.svg';
+        return 'vendor/dpay/edfali.svg';
     }
 
     protected function defaultFields(): array

@@ -32,7 +32,7 @@ strings.
 
 - **Released `v0.3.0`**, MIT, published on Packagist. Tags: `v0.1.0`,
   `v0.2.0`, `v0.3.0`.
-- **208 tests / 426 assertions**, PHPStan level 8 clean. CI runs
+- **269 tests / 531 assertions**, PHPStan level 8 clean. CI runs
   `composer check` on PHP 8.2, 8.3 and 8.4.
 - **`main` is branch-protected**: PRs required, the three PHP checks must
   pass, no force pushes, no deletion. Admins are exempt, so you *can* push
@@ -59,12 +59,11 @@ assuming a row is still accurate.
 | `Idempotency-Key` | Supported header on `sessions/open`; replays return the original session | ✅ SDK-side resolved. `DPayClient::openSession()` takes an optional `$idempotencyKey` and sends the header. Live-confirmed the sandbox itself doesn't honor replay correctly yet — that's a sandbox-side gap, not an SDK bug. See `SANDBOX-VALIDATION.md`. |
 | Per-gateway limits | `GET /api/pay-methods` returns live `fee`, `min_deposit`, `max_deposit` per gateway | ✅ Resolved in v0.4.0. `DPay\Dto\PayMethod` + `DPay\Client\PayMethodsClient` read the live list, memoised per instance. `DPayClient` takes an **optional** `PayMethodsClient`; when supplied it refuses out-of-range amounts and inactive gateways before opening a session, and **fails open** if the lookup itself fails. Off by default (`DPAY_VALIDATE_LIVE_LIMITS`, `validateAgainstLiveLimits:`) — these limits are merchant-configurable, so DPay remains the authority and `min_amount` stays a permissive local floor at `0.01`. |
 
-Unbuilt endpoints (`AuthClient`, `PaymentsClient`, `PayMethodsClient`,
-`InvoicesClient` and their DTOs) were deliberately deferred — the user's
-call, 2026-08-17. `GET /api/sandbox/pay-methods` returns real per-gateway
-data (all 9 gateways with `fee`/`min_deposit`/`max_deposit`/`enabled`), so
-`PayMethodsClient` is buildable and live-verifiable whenever it's wanted.
-`/auth/me`, `/payments` and `/invoices` are *not* routed on sandbox (a
+`PayMethodsClient` is built (v0.4.0). The remaining unbuilt endpoints —
+`AuthClient`, `PaymentsClient`, `InvoicesClient` and their DTOs — stay
+deferred by explicit decision: 1.0 means *stable*, not *complete*, and
+adding them later is additive. Two of the three cannot even be verified,
+because `/auth/me`, `/payments` and `/invoices` are *not* routed on sandbox (a
 branded HTML 404, genuinely unrouted), so those three can only be verified
 against Postman golden bodies. `/payments/filter` is a partial exception:
 `POST` hits a real route (`405`, naming it) while `GET` on the identical
@@ -343,16 +342,26 @@ the official spec at all and was correctly never added — if you see a
 stray "Yaser" reference anywhere outside `CHANGELOG.md`'s `[0.1.0]`
 historical section, it's a leftover that should be deleted.
 
-## Logo path mismatch
+## Logos
 
-`PaymentProviderInterface::logo()` implementations return paths like
-`images/payment-methods/edfali.svg`, but `DPayServiceProvider` publishes the
-bundled SVGs to `public/vendor/dpay/` (tag `dpay-logos`). The two paths do not
-line up, so a published logo won't resolve at the returned URL without host-side
-mapping — [docs/checkout-flow.md](docs/checkout-flow.md) quietly works around it
-by building `asset('vendor/dpay/'.$code.'.svg')` by hand instead of calling
-`logo()`.
+`PaymentProviderInterface::logo()` returns `vendor/dpay/<code>.svg`, which is
+exactly where `DPayServiceProvider` publishes the bundled SVGs (tag
+`dpay-logos`). `asset($provider->logo())` therefore resolves with no
+host-side mapping.
 
-Note that `GET /api/pay-methods` returns a `logo_url` per gateway, documented as
-a "stable public field" — which would remove the need to bundle and publish SVGs
-at all. Confirm intent before "fixing" either side.
+This was wrong until v0.4.0: providers returned `images/payment-methods/…`
+while the bridge published to `vendor/dpay/`, so the two never lined up and
+`docs/checkout-flow.md` rebuilt the path by hand rather than calling the
+method. Fixing it also surfaced that `SadadProvider` had been advertising a
+`sadad.svg` that was never bundled — the asset now exists.
+
+The bundled SVGs are deliberately **generic placeholders** (a coloured rect
+with the gateway name), not official brand assets. If you want real
+branding, read `PayMethod::$logoUrl` from `PayMethodsClient` — an absolute
+URL DPay maintains. `logo()` is the offline/bundled option; `logoUrl` is the
+upstream-authoritative one. Both are legitimate; they answer different
+questions.
+
+There is a test (`tests/Unit/LogoPathTest.php`) asserting both that every
+provider's `logo()` matches the publish location and that the named file
+actually exists under `resources/logos/`.

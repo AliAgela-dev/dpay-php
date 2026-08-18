@@ -53,7 +53,7 @@ final class MoamalatProvider implements PaymentProviderInterface
 
     public function logo(): string
     {
-        return 'images/payment-methods/moamalat.svg';
+        return 'vendor/dpay/moamalat.svg';
     }
 
     public function isEnabled(): bool

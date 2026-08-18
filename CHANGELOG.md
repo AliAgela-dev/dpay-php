@@ -48,6 +48,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DPay::payMethods()`.
 
 ### Fixed
+- **`PaymentProviderInterface::logo()` returned a path that resolved to
+  nothing.** Every provider returned `images/payment-methods/<code>.svg`
+  while the Laravel bridge publishes the bundled SVGs to
+  `public/vendor/dpay/` — the two never lined up, and
+  `docs/checkout-flow.md` worked around it by rebuilding the path by hand
+  instead of calling the method. `logo()` now returns
+  `vendor/dpay/<code>.svg`, so `asset($provider->logo())` resolves with no
+  host-side mapping. The interface docblock previously asserted the URL
+  "works out of the box", which was the one thing it did not do.
+
+  **If you implement `PaymentProviderInterface` yourself, nothing forces you
+  to change** — return whatever path your app serves. This only changes what
+  the bundled providers advertise.
+- **`SadadProvider` advertised a logo that was never bundled.** It has
+  returned `sadad.svg` since v0.2.0, but no such file existed under
+  `resources/logos/`, so publishing the assets still left it 404ing. The
+  file now exists, in the same generic placeholder style as the others.
 - **`VerifySessionResponse::$currency` was a fabricated default.** DPay does
   not send `currency` at the top level of a verify response — it lives on
   the nested payment object — so the DTO always fell back to a hardcoded

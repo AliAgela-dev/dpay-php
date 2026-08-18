@@ -26,7 +26,7 @@ final class SaharaPayProvider extends AbstractDPayProvider
 
     public function logo(): string
     {
-        return 'images/payment-methods/saharapay.svg';
+        return 'vendor/dpay/saharapay.svg';
     }
 
     public function supportsStatusCheck(): bool

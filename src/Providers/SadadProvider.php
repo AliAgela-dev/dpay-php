@@ -33,7 +33,7 @@ final class SadadProvider extends AbstractDPayProvider
 
     public function logo(): string
     {
-        return 'images/payment-methods/sadad.svg';
+        return 'vendor/dpay/sadad.svg';
     }
 
     protected function defaultFields(): array
