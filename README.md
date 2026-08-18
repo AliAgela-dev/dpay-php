@@ -187,7 +187,7 @@ $status  = DPay::getSession($session->sessionId);
 | [docs/dto-reference.md](docs/dto-reference.md) | You want every field of every response object in one place. |
 | [docs/configuration.md](docs/configuration.md) | Full env-var + config-key reference, with the `required_fields` override format. |
 | [docs/sandbox-testing.md](docs/sandbox-testing.md) | You have sandbox creds and want to run the live probe, or need the sandbox test-input cheat sheet. |
-| [UPGRADING.md](UPGRADING.md) | You're coming from `0.1.0` — every breaking change in `0.2.0` and the exact code edit each one needs. |
+| [UPGRADING.md](UPGRADING.md) | You're upgrading — what each release changed and the exact code edit, if any, that it needs. |
 
 ---
 
